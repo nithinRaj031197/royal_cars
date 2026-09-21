@@ -11,6 +11,8 @@
  */
 import type { DataStore } from "@/lib/store/types";
 
+export let DEMO_OWNER_PASSWORD = "";
+
 export async function seedDemoData(store: DataStore): Promise<void> {
   const ACTOR = "seed@royalcars.demo";
   const ctx = { actor: ACTOR };
@@ -23,9 +25,30 @@ export async function seedDemoData(store: DataStore): Promise<void> {
     { email: "ops@royalcars.demo", name: "Divya Ops", role: "operations" },
     { email: "accounts@royalcars.demo", name: "Karthik Accounts", role: "accounts" }
   ];
+  // The demo owner can sign in with a known password; the other roles exist in
+  // the data but sign-in is currently limited to owners (LOGIN_ENABLED_ROLES).
+  const { hashPassword } = await import("./auth/password");
+  const demoOwnerPassword = "Showroom-Demo-2026";
+  const ownerHash = await hashPassword(demoOwnerPassword);
   for (const s of staff) {
-    await store.create("Staff", { ...s, phone: "", active: "TRUE", googleSub: "", lastLoginAt: "" }, ctx);
+    await store.create(
+      "Staff",
+      {
+        ...s,
+        phone: "",
+        active: "TRUE",
+        googleSub: "",
+        lastLoginAt: "",
+        passwordHash: s.role === "owner" ? ownerHash : "",
+        passwordSetAt: s.role === "owner" ? new Date().toISOString() : "",
+        mustChangePassword: "FALSE",
+        failedAttempts: "0",
+        lockedUntil: ""
+      },
+      ctx
+    );
   }
+  DEMO_OWNER_PASSWORD = demoOwnerPassword;
 
   // ---------- Vendors ----------
   const vendor1 = await store.create("Vendors", { name: "Sharma Auto Works", category: "Workshop", phone: "9123456780", email: "", address: "Peenya, Bengaluru", gst: "", notes: "", preferred: "TRUE" }, ctx);

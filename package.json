@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "staff:password": "tsx scripts/staff-password.ts",
     "sheets:check": "tsx scripts/sheets-check.ts",
     "sheets:setup": "tsx scripts/sheets-setup.ts",
     "sheets:validate": "tsx scripts/sheets-validate.ts",

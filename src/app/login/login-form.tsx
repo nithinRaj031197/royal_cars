@@ -2,79 +2,100 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-
-const DEMO_PROFILES = [
-  { email: "owner@royalcars.demo", role: "owner", label: "Owner / Admin" },
-  { email: "sales@royalcars.demo", role: "sales", label: "Sales" },
-  { email: "ops@royalcars.demo", role: "operations", label: "Operations" },
-  { email: "accounts@royalcars.demo", role: "accounts", label: "Accounts" }
-];
+import { Button, Field } from "@/components/ui";
 
 /**
- * `demo` is resolved on the server from DEMO_MODE and passed in, so the sign-in
- * options shown always match the providers the server actually registered.
- * (Reading a NEXT_PUBLIC_* copy here meant the two could disagree — and did:
- * demo mode offered a Google button that demo mode has no provider for.)
+ * Staff sign-in: email and password, checked against the Staff tab.
+ *
+ * The form deliberately gives one message for every kind of failure. Saying
+ * "no such account" would let anyone use this page to discover which addresses
+ * belong to staff; the server decides, and simply reports that the combination
+ * is wrong.
  */
 export function LoginForm({ demo }: { demo: boolean }) {
-  const [busy, setBusy] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  async function loginDemo(profile: (typeof DEMO_PROFILES)[number]) {
-    setBusy(profile.email);
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
     setError("");
     try {
-      const res = await signIn("demo", { email: profile.email, role: profile.role, redirect: false });
-      if (res?.error) setError("Sign-in failed. Please try again.");
-      else window.location.href = "/";
+      const res = await signIn("password", { email: email.trim(), password, redirect: false });
+      if (res?.error) {
+        setError(res.error === "CredentialsSignin" ? "Email or password is incorrect." : res.error);
+        return;
+      }
+      window.location.href = "/dashboard";
     } catch {
-      setError("Sign-in failed. Please try again.");
+      setError("Could not reach the server. Check your connection and try again.");
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
 
-  if (demo) {
-    return (
-      <div className="mt-6">
-        {error ? <p className="error-text" role="alert">{error}</p> : null}
-        <p className="mb-2 text-sm font-medium text-slate-700">Demo mode — choose a staff profile</p>
-        <div className="grid gap-2">
-          {DEMO_PROFILES.map((p) => (
-            <button
-              key={p.email}
-              className="btn-secondary w-full flex-col items-start gap-0 text-left sm:flex-row sm:items-center sm:justify-between"
-              disabled={busy !== null}
-              onClick={() => loginDemo(p)}
-            >
-              <span className="font-medium">{busy === p.email ? "Signing in…" : p.label}</span>
-              <span className="text-xs text-slate-500">{p.email}</span>
-            </button>
-          ))}
-        </div>
-        <p className="mt-4 text-xs text-slate-500">
-          Demo data is fictional and kept separate from any production Google Sheet.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="mt-6">
-      {error ? <p className="error-text" role="alert">{error}</p> : null}
-      <button
-        className="btn-primary w-full"
-        disabled={busy !== null}
-        onClick={() => {
-          setBusy("google");
-          signIn("google", { callbackUrl: "/" });
-        }}
-      >
-        {busy ? "Signing in…" : "Continue with Google"}
-      </button>
-      <p className="mt-3 text-xs text-slate-500">
-        Only email addresses on the staff allowlist can sign in. Ask an owner to add you in Settings → Staff.
+    <form onSubmit={onSubmit} noValidate className="space-y-4">
+      {error ? (
+        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800">
+          {error}
+        </div>
+      ) : null}
+
+      <Field label="Email" help={false}>
+        <input
+          className="input"
+          type="email"
+          autoComplete="username"
+          inputMode="email"
+          autoFocus
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@royalcars.in"
+        />
+      </Field>
+
+      <Field label="Password" help={false}>
+        <div className="relative">
+          <input
+            className="input pr-16"
+            type={showPassword ? "text" : "password"}
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            className="absolute inset-y-0 right-0 px-3 text-xs font-medium text-slate-500 hover:text-slate-900"
+            aria-pressed={showPassword}
+          >
+            {showPassword ? "Hide" : "Show"}
+          </button>
+        </div>
+      </Field>
+
+      <Button type="submit" className="w-full" loading={busy} loadingText="Signing in…">
+        Sign in
+      </Button>
+
+      <p className="text-center text-xs leading-relaxed text-slate-500">
+        Accounts are created by an owner — there is no self sign-up. If you have
+        forgotten your password, ask an owner to set a new one.
       </p>
-    </div>
+
+      {demo ? (
+        <p className="rounded-lg bg-slate-50 px-3 py-2 text-center text-xs text-slate-500">
+          Demo data. Sign in as <span className="font-medium text-slate-700">owner@royalcars.demo</span> with the
+          password printed by <code className="font-mono">pnpm sheets:seed</code>.
+        </p>
+      ) : null}
+    </form>
   );
 }
