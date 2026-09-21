@@ -1,0 +1,17 @@
+node_modules
+.next
+out
+build
+coverage
+*.log
+.env
+.env.local
+.env*.local
+.DS_Store
+next-env.d.ts
+service-account*.json
+*.pem
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo
+secrets/
