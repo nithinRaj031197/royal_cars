@@ -89,13 +89,23 @@ pnpm schema:export    # regenerate DATA_DICTIONARY.md from the registry
 
 ## Documentation
 
+Everything lives in [`docs/`](docs/).
+
 | Document | Contents |
 | --- | --- |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Layers, the write gateway, concurrency, caching, what Sheets cannot do |
-| [DATA_DICTIONARY.md](DATA_DICTIONARY.md) | Every tab and column (generated) |
-| [ADMIN_GUIDE.md](ADMIN_GUIDE.md) | Day-to-day use, for showroom staff |
-| [DEPLOYMENT.md](DEPLOYMENT.md) | Google setup, secrets, backups, restore, quotas |
-| [ASSUMPTIONS.md](ASSUMPTIONS.md) | Business decisions made where the brief was silent |
+| [PRD.md](docs/PRD.md) | The problem, who uses it, scope and non-goals |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layers, the write gateway, concurrency, what Sheets cannot do |
+| [DESIGN.md](docs/DESIGN.md) | Brand, type, layout, tables on a phone, motion |
+| [RULES.md](docs/RULES.md) | The business rules the code enforces |
+| [DATA_DICTIONARY.md](docs/DATA_DICTIONARY.md) | Every tab and column (generated) |
+| [SECURITY.md](docs/SECURITY.md) | Auth, authorisation, secrets, residual risks |
+| [TEST_PLAN.md](docs/TEST_PLAN.md) | What is covered, and what is deliberately not |
+| [TASKS.md](docs/TASKS.md) | Done, next, later |
+| [DECISIONS.md](docs/DECISIONS.md) | What was decided, why, and what it cost |
+| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Google setup, secrets, backups, quotas |
+| [ADMIN_GUIDE.md](docs/ADMIN_GUIDE.md) | Day-to-day use, for showroom staff |
+| [ASSUMPTIONS.md](docs/ASSUMPTIONS.md) | Decisions made where the brief was silent |
+| [MEMORY.md](docs/MEMORY.md) | Live environment, gotchas, hard-won context |
 
 ## How money is handled
 
@@ -126,7 +136,7 @@ accessory billed inside a work order invoice is not counted a second time.
   `pnpm sheets:setup` and `pnpm sheets:validate` against your own Google project
   can do that. Nothing here has been run against a real Google account.
 - **Sheets is not a database.** There are no transactions and no indexes. See
-  [ARCHITECTURE.md](ARCHITECTURE.md#what-google-sheets-cannot-do) for what that
+  [ARCHITECTURE.md](docs/ARCHITECTURE.md#what-google-sheets-cannot-do) for what that
   costs you and how the app compensates.
 - **Tested dataset size.** The demo dataset is small (3 vehicles). The design
   targets roughly 800 vehicles and 10,000 rows per tab; those figures are design
@@ -134,7 +144,7 @@ accessory billed inside a work order invoice is not counted a second time.
 - **Manual spreadsheet edits bypass the application.** They skip validation and
   audit history. `pnpm sheets:audit` finds the damage; it cannot prevent it.
 - **CSV exports do not back up Drive files.** Data and files need separate backup
-  procedures — both are described in [DEPLOYMENT.md](DEPLOYMENT.md#backup-and-restore).
+  procedures — both are described in [DEPLOYMENT.md](docs/DEPLOYMENT.md#backup-and-restore).
 
 ## Tech
 
@@ -148,5 +158,5 @@ fonts via `next/font`.
 
 No monolithic component library: Radix supplies accessible behaviour, Tailwind
 supplies styling, and the wrappers in `src/components/ui/` are ours to edit. See
-[ARCHITECTURE.md](ARCHITECTURE.md#ui-foundation) for why, and for how the
+[ARCHITECTURE.md](docs/ARCHITECTURE.md#ui-foundation) for why, and for how the
 per-field help popovers work.
