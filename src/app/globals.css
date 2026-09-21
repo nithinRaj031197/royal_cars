@@ -1,0 +1,214 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  /* Neutral surface behind cards; slightly warmer than pure slate. */
+  --surface: 248 250 252;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 font-sans text-slate-900 antialiased;
+  }
+
+  /* Page titles carry the brand; everything else stays in Geist so dense
+     screens remain easy to scan. */
+  h1 {
+    @apply font-display;
+    font-variation-settings: "SOFT" 0, "WONK" 0, "opsz" 40;
+    letter-spacing: -0.005em;
+  }
+
+  /* Geist Mono is for FIGURES AND IDENTIFIERS ONLY — money, dates, odometer
+     readings, stock and invoice references. Applying it to every table cell
+     also caught car names, status badges and links, which then read as code.
+     Table cells stay in Geist and opt in with `.tabular` / `.ref`. */
+  .tabular,
+  .ref {
+    @apply font-mono;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  /* Numbers still align in any cell, even without the mono face. */
+  td,
+  th {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Focus is a neutral dark ring, never the brand red. In this palette red
+     means "error" (invalid field, destructive action, money owed), so using it
+     for focus made every focused input look like it had failed validation. */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-slate-900 ring-offset-2 ring-offset-white;
+  }
+
+  ::selection {
+    @apply bg-brand-100 text-brand-900;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium
+           transition-all duration-150 active:scale-[0.98]
+           disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white shadow-sm shadow-brand-600/20
+           hover:bg-brand-700 hover:shadow-md hover:shadow-brand-600/25;
+  }
+  .btn-secondary {
+    @apply btn border border-slate-200 bg-white text-slate-700 shadow-sm
+           hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900;
+  }
+  .btn-ghost {
+    @apply btn text-slate-600 hover:bg-slate-100 hover:text-slate-900;
+  }
+  .btn-danger {
+    @apply btn bg-red-600 text-white shadow-sm shadow-red-600/20 hover:bg-red-700;
+  }
+
+  .input,
+  .select {
+    @apply block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900
+           shadow-sm transition-shadow placeholder:text-slate-400
+           focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/15
+           disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-slate-700;
+  }
+  /* Field sets aria-invalid when there is an error, so red styling follows the
+     accessible state rather than an extra class someone has to remember. */
+  .input[aria-invalid="true"],
+  .select[aria-invalid="true"] {
+    @apply border-red-400 focus:border-red-500 focus:ring-red-500/20;
+  }
+
+  .card {
+    @apply rounded-xl border border-slate-200/80 bg-white shadow-sm;
+  }
+  /* Lifts slightly on hover — only for cards that are links. */
+  .card-interactive {
+    @apply card transition-all duration-150 hover:-translate-y-px hover:border-slate-300 hover:shadow-md;
+  }
+
+  .badge {
+    @apply inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5
+           text-xs font-medium ring-1 ring-inset;
+  }
+
+  .table-base {
+    @apply min-w-full text-sm;
+  }
+  .table-base thead th {
+    @apply whitespace-nowrap border-b border-slate-200 bg-slate-50/80 px-3 py-2.5 text-left
+           font-sans text-[11px] font-semibold uppercase tracking-wider text-slate-500;
+    letter-spacing: 0.05em;
+  }
+  .table-base td {
+    @apply whitespace-nowrap px-3 py-3 align-middle text-slate-700;
+  }
+  /* Opt-out for columns of real prose (a complaint, an issue description).
+     Those get a sensible width and wrap rather than stretching the table. */
+  .table-base td.cell-wrap,
+  .table-base th.cell-wrap {
+    @apply w-[18rem] min-w-[12rem] max-w-[22rem] whitespace-normal;
+  }
+  .table-base tbody tr {
+    @apply transition-colors;
+  }
+
+  .error-text {
+    @apply mt-1.5 text-sm text-red-600;
+  }
+
+  /* Horizontal scroller that still bleeds to the card edge on small screens. */
+  .scroll-x {
+    @apply -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0;
+  }
+
+  /*
+   * Dense tables on a phone.
+   *
+   * A seven-column table cannot fit 390px, so it scrolls. Two things make that
+   * usable rather than confusing:
+   *  - the first column stays put, so the row you are reading keeps its
+   *    identity (stock number, reference) while the figures scroll past;
+   *  - a fade on the right edge shows there is more to see. Without it the
+   *    table just looks cut off.
+   */
+  /*
+   * Dense tables on a phone.
+   *
+   * A seven-column table cannot fit 390px, so it scrolls. Two things make that
+   * usable rather than confusing:
+   *  - the first column stays put, so the row keeps its identity (stock number,
+   *    reference) while the figures scroll past;
+   *  - a shadow on whichever edge has more content shows there is more to see.
+   *
+   * The shadow is pure CSS (local vs scroll background-attachment): it appears
+   * only when the content actually overflows and disappears at each end, with
+   * no scroll listener and no dimming of the content itself.
+   */
+  .table-scroll {
+    @apply overflow-x-auto;
+    scrollbar-width: thin;
+    background-image:
+      linear-gradient(to right, theme("colors.white") 30%, rgb(255 255 255 / 0)),
+      linear-gradient(to left, theme("colors.white") 30%, rgb(255 255 255 / 0)),
+      radial-gradient(farthest-side at 0 50%, rgb(15 23 42 / 0.12), rgb(15 23 42 / 0)),
+      radial-gradient(farthest-side at 100% 50%, rgb(15 23 42 / 0.12), rgb(15 23 42 / 0));
+    background-position: left center, right center, left center, right center;
+    background-repeat: no-repeat;
+    background-size: 36px 100%, 36px 100%, 12px 100%, 12px 100%;
+    background-attachment: local, local, scroll, scroll;
+  }
+
+  @media (max-width: 639px) {
+    .table-sticky-first thead th:first-child,
+    .table-sticky-first tbody td:first-child {
+      @apply sticky left-0 z-10 bg-white;
+    }
+    .table-sticky-first thead th:first-child {
+      @apply bg-slate-50;
+    }
+    .table-sticky-first tbody tr:hover td:first-child {
+      @apply bg-slate-50;
+    }
+    /* Hairline separating the frozen column from the scrolling ones. */
+    .table-sticky-first thead th:first-child::after,
+    .table-sticky-first tbody td:first-child::after {
+      content: "";
+      @apply absolute inset-y-0 right-0 w-px bg-slate-200;
+    }
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    @apply bg-white;
+  }
+}
+
+/* Never animate for viewers who have asked not to. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise {
+    animation: none !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
