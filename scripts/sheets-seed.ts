@@ -9,13 +9,15 @@
  * script always seed exactly the same records.
  */
 import { getStore } from "../src/lib/store";
-import { seedDemoData, DEMO_LOGIN_PROFILES } from "../src/server/demo-seed";
+import { seedDemoData, DEMO_LOGIN_PROFILES, DEMO_OWNER_PASSWORD } from "../src/server/demo-seed";
 
 async function main() {
   const store = getStore();
   await seedDemoData(store);
   console.log("Seed complete.");
   console.log("  Login profiles: " + DEMO_LOGIN_PROFILES.map((p) => p.email).join(" / "));
+  console.log(`  Sign in as owner@royalcars.demo with password: ${DEMO_OWNER_PASSWORD}`);
+  console.log("  Sign-in is limited to owner accounts for now.");
 }
 
 main().catch((err) => {

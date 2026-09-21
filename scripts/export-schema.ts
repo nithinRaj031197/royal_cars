@@ -124,8 +124,8 @@ function main() {
     lines.push("");
   }
 
-  writeFileSync("DATA_DICTIONARY.md", lines.join("\n"));
-  console.log(`Wrote DATA_DICTIONARY.md (${Object.keys(TABLES).length} tabs, schema v${SCHEMA_VERSION}).`);
+  writeFileSync("docs/DATA_DICTIONARY.md", lines.join("\n"));
+  console.log(`Wrote docs/DATA_DICTIONARY.md (${Object.keys(TABLES).length} tabs, schema v${SCHEMA_VERSION}).`);
 }
 
 function baseNote(c: string): string {
