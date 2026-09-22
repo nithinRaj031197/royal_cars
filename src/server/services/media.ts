@@ -1,6 +1,7 @@
 import { getRepo } from "@/lib/repo";
 import { WriteContext } from "@/lib/store/types";
 import { envConfig } from "@/lib/config/env";
+import { googleAuthConfig, hasGoogleCredentials } from "@/lib/config/google-credentials";
 import { IMAGE_MIME_TYPES, DOC_MIME_TYPES, MAX_UPLOAD_BYTES } from "@/lib/config/constants";
 import { newUUID } from "@/lib/ids";
 
@@ -23,10 +24,7 @@ const DRIVE_FOLDER_BY_CATEGORY: Record<string, "photos" | "docs"> = {
 async function driveClient() {
   const { google } = await import("googleapis");
   const { GoogleAuth } = await import("google-auth-library");
-  const auth = new GoogleAuth({
-    keyFile: envConfig.serviceAccountFile,
-    scopes: ["https://www.googleapis.com/auth/drive"]
-  });
+  const auth = new GoogleAuth(googleAuthConfig(["https://www.googleapis.com/auth/drive"]));
   return google.drive({ version: "v3", auth });
 }
 
@@ -52,7 +50,7 @@ export async function uploadVehicleFile(
     throw Object.assign(new Error("Photo categories require an image file."), { status: 400 });
   }
 
-  if (!envConfig.serviceAccountFile) {
+  if (!hasGoogleCredentials()) {
     throw Object.assign(
       new Error("Google Drive is not configured. Uploads require GOOGLE_SERVICE_ACCOUNT_FILE."),
       { status: 503 }
@@ -111,7 +109,7 @@ export async function uploadVehicleFile(
 
 /** Streams a Drive file to an authenticated staff member. Files stay private. */
 export async function readDriveFile(fileId: string): Promise<{ stream: NodeJS.ReadableStream; mimeType: string; name: string } | null> {
-  if (!envConfig.serviceAccountFile) return null;
+  if (!hasGoogleCredentials()) return null;
   const drive = await driveClient();
   try {
     const meta = await drive.files.get({ fileId, fields: "name,mimeType" });

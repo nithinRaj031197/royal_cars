@@ -2,6 +2,7 @@ import { DemoStore } from "./demo-store";
 import { GoogleSheetsStore } from "./google-sheets";
 import { DataStore } from "./types";
 import { envConfig } from "../config/env";
+import { hasGoogleCredentials } from "../config/google-credentials";
 
 let cached: DataStore | null = null;
 
@@ -13,13 +14,13 @@ export function getStore(): DataStore {
     return cached;
   }
   const sheetsId = envConfig.sheetsId;
-  const saFile = envConfig.serviceAccountFile;
-  if (!sheetsId || !saFile) {
+  if (!sheetsId || !hasGoogleCredentials()) {
     throw new Error(
-      "Missing GOOGLE_SHEETS_ID / GOOGLE_SERVICE_ACCOUNT_FILE. Configure Google access or set DEMO_MODE=1."
+      "Missing GOOGLE_SHEETS_ID, or no credentials. Set GOOGLE_SERVICE_ACCOUNT_JSON (serverless) " +
+        "or GOOGLE_SERVICE_ACCOUNT_FILE (local), or set DEMO_MODE=1."
     );
   }
-  cached = new GoogleSheetsStore(sheetsId, saFile);
+  cached = new GoogleSheetsStore(sheetsId);
   return cached;
 }
 

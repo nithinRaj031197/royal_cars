@@ -1,4 +1,5 @@
 import { GoogleAuth } from "google-auth-library";
+import { googleAuthConfig } from "../config/google-credentials";
 import { google } from "googleapis";
 import type { sheets_v4 } from "googleapis";
 import { getTable, TABLES, type TableName } from "./tables";
@@ -35,14 +36,13 @@ export class GoogleSheetsStore implements DataStore {
   private cache = new Map<TableName, CacheEntry>();
   private inflight = new Map<TableName, Promise<CacheEntry>>();
 
-  constructor(readonly spreadsheetId: string, serviceAccountFile: string) {
-    this.auth = new GoogleAuth({
-      keyFile: serviceAccountFile,
-      scopes: [
+  constructor(readonly spreadsheetId: string, _serviceAccountFile?: string) {
+    this.auth = new GoogleAuth(
+      googleAuthConfig([
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
-      ]
-    });
+      ])
+    );
     this.sheetsClient = google.sheets({ version: "v4", auth: this.auth });
   }
 

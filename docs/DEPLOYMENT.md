@@ -126,6 +126,37 @@ rest of the staff from **Settings → Staff**.
 To lock someone out immediately, set their `active` to `FALSE`. Existing sessions
 last at most 12 hours.
 
+## 7a. Deploying to Vercel
+
+Vercel has no writable disk, so `GOOGLE_SERVICE_ACCOUNT_FILE` cannot work there.
+Pass the key itself instead, base64-encoded so the newlines in the private key
+survive the dashboard:
+
+```bash
+base64 -i secrets/service-account.json | tr -d '\n'
+```
+
+Paste the result as `GOOGLE_SERVICE_ACCOUNT_JSON`. Raw JSON also works; base64 is
+simply harder to corrupt. Inline JSON takes precedence over a file, so a stale
+key baked into an image can never win.
+
+| Variable | Value | Scope |
+| --- | --- | --- |
+| `NEXTAUTH_URL` | `https://<your-app>.vercel.app` | Production |
+| `NEXTAUTH_SECRET` | `openssl rand -base64 32` | All |
+| `GOOGLE_SHEETS_ID` | The spreadsheet id | All |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | The base64 above | All |
+| `OWNER_EMAIL` | Your address | All |
+
+**Do not set `DEMO_MODE`.** Any value makes the deployment serve in-memory
+fictional data. Leave it unset in production.
+
+Add Drive and gateway variables once those stages are done. Until the gateway is
+deployed, critical writes are not serialized — acceptable for a single user
+evaluating the app, not for a showroom taking payments.
+
+Redeploy after changing any variable: Vercel bakes them in at build time.
+
 ## 7. Deploying the app
 
 Any Node host that runs Next.js 15 (Vercel, Cloud Run, a VM):

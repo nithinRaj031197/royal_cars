@@ -22,6 +22,10 @@ export const envConfig = {
   get serviceAccountFile(): string | undefined {
     return env("GOOGLE_SERVICE_ACCOUNT_FILE");
   },
+  /** Inline credentials for hosts with no writable disk (Vercel, Lambda). */
+  get serviceAccountJson(): string | undefined {
+    return env("GOOGLE_SERVICE_ACCOUNT_JSON");
+  },
   get driveRootFolderId(): string | undefined {
     return env("GOOGLE_DRIVE_ROOT_FOLDER_ID");
   },
