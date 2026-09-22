@@ -7,8 +7,9 @@
  *
  * Usage: pnpm sheets:check
  */
-import { existsSync, readFileSync } from "node:fs";
 import { google } from "googleapis";
+
+import { googleAuthConfig, resolveGoogleCredentials } from "../src/lib/config/google-credentials";
 
 const ok = (m: string) => console.log(`  \x1b[32m✓\x1b[0m ${m}`);
 const bad = (m: string) => console.log(`  \x1b[31m✗\x1b[0m ${m}`);
@@ -17,33 +18,20 @@ const info = (m: string) => console.log(`    ${m}`);
 async function main() {
   console.log("\nGoogle connection preflight\n");
 
-  const keyPath = process.env.GOOGLE_SERVICE_ACCOUNT_FILE ?? "./secrets/service-account.json";
   const sheetId = process.env.GOOGLE_SHEETS_ID;
   let failed = false;
 
-  // 1. Key file ------------------------------------------------------------
-  if (!existsSync(keyPath)) {
-    bad(`Service-account key not found at ${keyPath}`);
-    info("Download the JSON key from Google Cloud Console and save it there,");
-    info("or set GOOGLE_SERVICE_ACCOUNT_FILE to its path.");
+  // 1. Credentials ---------------------------------------------------------
+  // Resolved exactly as the app resolves them, so this reports on the
+  // configuration you actually have — inline JSON (serverless) or a key file.
+  try {
+    const { source, credentials } = resolveGoogleCredentials();
+    ok(`Service-account key read from ${source}`);
+    info(`project:       ${credentials.project_id ?? "(none)"}`);
+    info(`share sheet with: ${credentials.client_email}`);
+  } catch (err) {
+    bad((err as Error).message);
     failed = true;
-  } else {
-    let key: { client_email?: string; private_key?: string; project_id?: string; type?: string };
-    try {
-      key = JSON.parse(readFileSync(keyPath, "utf8"));
-    } catch {
-      bad(`${keyPath} is not valid JSON — re-download the key.`);
-      process.exit(1);
-    }
-    if (key.type !== "service_account" || !key.client_email || !key.private_key) {
-      bad(`${keyPath} is not a service-account key (found type "${key.type ?? "unknown"}").`);
-      info("In Cloud Console choose Service account → Keys → Add key → JSON.");
-      failed = true;
-    } else {
-      ok(`Service-account key read from ${keyPath}`);
-      info(`project:       ${key.project_id ?? "(none)"}`);
-      info(`share sheet with: ${key.client_email}`);
-    }
   }
 
   // 2. Spreadsheet id ------------------------------------------------------
@@ -63,10 +51,12 @@ async function main() {
 
   // 3. Can we actually reach it? -------------------------------------------
   try {
-    const auth = new google.auth.GoogleAuth({
-      keyFile: keyPath,
-      scopes: ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-    });
+    const auth = new google.auth.GoogleAuth(
+      googleAuthConfig([
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+      ])
+    );
     const sheets = google.sheets({ version: "v4", auth });
     const meta = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
     ok(`Opened "${meta.data.properties?.title ?? "(untitled)"}"`);

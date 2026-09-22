@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { envConfig } from "./env";
 
 /**
@@ -17,13 +17,25 @@ import { envConfig } from "./env";
  * Inline JSON wins when both are present, so a deployment cannot accidentally
  * fall back to a stale file baked into an image.
  */
+export interface ServiceAccountKey {
+  client_email: string;
+  private_key: string;
+  project_id?: string;
+}
+
+/** Which environment variable the key actually came from. */
+export interface ResolvedCredentials {
+  source: string;
+  credentials: ServiceAccountKey;
+}
+
 export interface GoogleAuthConfig {
   credentials?: { client_email: string; private_key: string };
   keyFile?: string;
   scopes: string[];
 }
 
-function parseInlineJson(raw: string): { client_email: string; private_key: string } {
+function parseInlineJson(raw: string): ServiceAccountKey {
   let text = raw.trim();
 
   // Base64 has no braces; raw JSON starts with one.
@@ -35,7 +47,7 @@ function parseInlineJson(raw: string): { client_email: string; private_key: stri
     }
   }
 
-  let parsed: { client_email?: string; private_key?: string; type?: string };
+  let parsed: { client_email?: string; private_key?: string; project_id?: string; type?: string };
   try {
     parsed = JSON.parse(text);
   } catch {
@@ -49,9 +61,69 @@ function parseInlineJson(raw: string): { client_email: string; private_key: stri
   return {
     client_email: parsed.client_email,
     // Dashboards frequently store the key with literal \n rather than newlines.
-    private_key: parsed.private_key.replace(/\\n/g, "\n")
+    private_key: parsed.private_key.replace(/\\n/g, "\n"),
+    project_id: parsed.project_id
   };
 }
+
+/**
+ * Resolves the key and reports where it came from.
+ *
+ * Setup tooling uses this so it describes the configuration you actually have
+ * rather than the one it assumes; `googleAuthConfig` is built on top of it.
+ */
+export function resolveGoogleCredentials(): ResolvedCredentials {
+  const inline = envConfig.serviceAccountJson;
+  if (inline) {
+    return { source: "GOOGLE_SERVICE_ACCOUNT_JSON (inline)", credentials: parseInlineJson(inline) };
+  }
+
+  const file = envConfig.serviceAccountFile;
+  if (file) {
+    if (!existsSync(file)) throw new Error(missingFileMessage(file));
+
+    let parsed: { client_email?: string; private_key?: string; project_id?: string; type?: string };
+    try {
+      parsed = JSON.parse(readFileSync(file, "utf8"));
+    } catch {
+      throw new Error(`${file} is not valid JSON — re-download the key from Cloud Console.`);
+    }
+    if (parsed.type !== "service_account" || !parsed.client_email || !parsed.private_key) {
+      throw new Error(
+        `${file} is not a service-account key (found type "${parsed.type ?? "unknown"}"). ` +
+          "In Cloud Console choose Service account → Keys → Add key → JSON."
+      );
+    }
+    return {
+      source: file,
+      credentials: {
+        client_email: parsed.client_email,
+        private_key: parsed.private_key,
+        project_id: parsed.project_id
+      }
+    };
+  }
+
+  throw new Error(NO_CREDENTIALS);
+}
+
+/**
+ * A path that does not exist is the likeliest misconfiguration on a serverless
+ * host: GOOGLE_SERVICE_ACCOUNT_FILE gets copied from the local .env, but there
+ * is no filesystem to put the key on. Say so, rather than letting googleapis
+ * fail later with an ENOENT nobody can act on.
+ */
+function missingFileMessage(file: string): string {
+  return (
+    `GOOGLE_SERVICE_ACCOUNT_FILE points at "${file}", which does not exist. ` +
+    "On a serverless host (Vercel, Lambda) there is no writable disk for a key file — " +
+    "remove that variable and set GOOGLE_SERVICE_ACCOUNT_JSON to the key itself instead " +
+    "(base64 is safest: base64 -i secrets/service-account.json | tr -d '\\n')."
+  );
+}
+
+const NO_CREDENTIALS =
+  "No Google credentials. Set GOOGLE_SERVICE_ACCOUNT_JSON (serverless) or GOOGLE_SERVICE_ACCOUNT_FILE (local).";
 
 export function googleAuthConfig(scopes: string[]): GoogleAuthConfig {
   const inline = envConfig.serviceAccountJson;
@@ -59,24 +131,11 @@ export function googleAuthConfig(scopes: string[]): GoogleAuthConfig {
 
   const file = envConfig.serviceAccountFile;
   if (file) {
-    // A path that does not exist is the single most likely misconfiguration on a
-    // serverless host: GOOGLE_SERVICE_ACCOUNT_FILE gets copied from the local
-    // .env, but there is no filesystem to put the key on. Say so, rather than
-    // letting googleapis fail later with an ENOENT nobody can act on.
-    if (!existsSync(file)) {
-      throw new Error(
-        `GOOGLE_SERVICE_ACCOUNT_FILE points at "${file}", which does not exist. ` +
-          "On a serverless host (Vercel, Lambda) there is no writable disk for a key file — " +
-          "remove that variable and set GOOGLE_SERVICE_ACCOUNT_JSON to the key itself instead " +
-          "(base64 is safest: base64 -i secrets/service-account.json | tr -d '\\n')."
-      );
-    }
+    if (!existsSync(file)) throw new Error(missingFileMessage(file));
     return { keyFile: file, scopes };
   }
 
-  throw new Error(
-    "No Google credentials. Set GOOGLE_SERVICE_ACCOUNT_JSON (serverless) or GOOGLE_SERVICE_ACCOUNT_FILE (local)."
-  );
+  throw new Error(NO_CREDENTIALS);
 }
 
 /**
