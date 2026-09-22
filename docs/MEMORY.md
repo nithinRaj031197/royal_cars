@@ -65,7 +65,7 @@ CONFIRM_RESET=yes pnpm sheets:reset   # clear data rows, keep headers
 pnpm staff:password -- --email you@royalcars.in --role owner
 ```
 
-`pnpm build` now refuses to run while a dev server is up, because both write to
+`pnpm build` refuses to run while a **local** dev server is up, because both write to
 `.next`: a build overwrites the chunks dev is serving and the browser then fails
 with `Cannot read properties of undefined (reading 'call')` from webpack.js. The
 build succeeds, so the damage only shows on the next reload.
@@ -75,6 +75,12 @@ removes `.next`. Override the guard deliberately with `ALLOW_BUILD_WITH_DEV=1`.
 
 Also watch for **two** dev servers on port 3000 — starting a second one while the
 first is alive produces the same corruption. `pnpm clean` clears both.
+
+The guard skips itself on any build server (`CI`, `VERCEL`, `GITHUB_ACTIONS`…)
+and uses a bracket pattern, `pgrep -fl '[n]ext dev'`. Both matter: the first
+version broke a Vercel deploy because Linux `pgrep -f 'next dev'` matches the
+shell that is *running* pgrep, since that shell's own command line contains the
+string. macOS does not, so it passed locally and failed in production.
 
 ## Demo sign-in
 
