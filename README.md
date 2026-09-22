@@ -76,7 +76,8 @@ entering inventory.
 
 ```bash
 pnpm dev              # development server
-pnpm build            # production build
+pnpm build            # production build (refuses to run while dev is running)
+pnpm clean            # stop dev servers and clear the .next cache
 pnpm test             # vitest suite
 pnpm typecheck        # tsc --noEmit
 pnpm lint             # eslint (next/core-web-vitals + next/typescript)
