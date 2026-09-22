@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { envConfig } from "./env";
 
 /**
@@ -57,14 +58,36 @@ export function googleAuthConfig(scopes: string[]): GoogleAuthConfig {
   if (inline) return { credentials: parseInlineJson(inline), scopes };
 
   const file = envConfig.serviceAccountFile;
-  if (file) return { keyFile: file, scopes };
+  if (file) {
+    // A path that does not exist is the single most likely misconfiguration on a
+    // serverless host: GOOGLE_SERVICE_ACCOUNT_FILE gets copied from the local
+    // .env, but there is no filesystem to put the key on. Say so, rather than
+    // letting googleapis fail later with an ENOENT nobody can act on.
+    if (!existsSync(file)) {
+      throw new Error(
+        `GOOGLE_SERVICE_ACCOUNT_FILE points at "${file}", which does not exist. ` +
+          "On a serverless host (Vercel, Lambda) there is no writable disk for a key file — " +
+          "remove that variable and set GOOGLE_SERVICE_ACCOUNT_JSON to the key itself instead " +
+          "(base64 is safest: base64 -i secrets/service-account.json | tr -d '\\n')."
+      );
+    }
+    return { keyFile: file, scopes };
+  }
 
   throw new Error(
     "No Google credentials. Set GOOGLE_SERVICE_ACCOUNT_JSON (serverless) or GOOGLE_SERVICE_ACCOUNT_FILE (local)."
   );
 }
 
-/** True when credentials are configured, without throwing. */
+/**
+ * True when usable credentials are configured.
+ *
+ * A key-file path that does not exist counts as NOT configured, so the app
+ * reports "Drive is not set up" rather than appearing configured and then
+ * failing on every call.
+ */
 export function hasGoogleCredentials(): boolean {
-  return Boolean(envConfig.serviceAccountJson || envConfig.serviceAccountFile);
+  if (envConfig.serviceAccountJson) return true;
+  const file = envConfig.serviceAccountFile;
+  return Boolean(file && existsSync(file));
 }

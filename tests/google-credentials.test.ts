@@ -74,3 +74,19 @@ describe("google credentials", () => {
     expect(() => googleAuthConfig([])).toThrow(/client_email or private_key/);
   });
 });
+
+describe("misconfiguration is reported, not left to fail later", () => {
+  it("rejects a key-file path that does not exist, naming the serverless fix", () => {
+    process.env.GOOGLE_SERVICE_ACCOUNT_FILE = "./secrets/does-not-exist.json";
+    expect(hasGoogleCredentials()).toBe(false);
+    expect(() => googleAuthConfig([])).toThrow(/does not exist/);
+    expect(() => googleAuthConfig([])).toThrow(/GOOGLE_SERVICE_ACCOUNT_JSON/);
+  });
+
+  it("still prefers inline JSON even when a bad file path is also set", () => {
+    process.env.GOOGLE_SERVICE_ACCOUNT_FILE = "./secrets/does-not-exist.json";
+    process.env.GOOGLE_SERVICE_ACCOUNT_JSON = JSON.stringify(FAKE);
+    expect(hasGoogleCredentials()).toBe(true);
+    expect(googleAuthConfig([]).credentials?.client_email).toBe(FAKE.client_email);
+  });
+});
