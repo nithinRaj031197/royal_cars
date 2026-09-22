@@ -91,6 +91,63 @@ export function optionalWholeNumber(min: number, max: number, label: string) {
     });
 }
 
+/**
+ * Treat "" as "not provided".
+ *
+ * An HTML form posts "" for anything the user left alone, never `undefined`.
+ * Zod's `.default()` only fires for `undefined`, so `z.enum([...]).default("x")`
+ * REJECTS a blank select with "Invalid enum value ... received ''", and
+ * `moneyInput.optional()` rejects a blank amount with "Enter a valid amount".
+ * These wrappers normalise "" to undefined first, so blank means absent.
+ */
+const blankToUndefined = (v: unknown) =>
+  v === "" || v === null || (typeof v === "string" && v.trim() === "") ? undefined : v;
+
+/** An enum that falls back to `fallback` when the field is blank or absent. */
+export function optionalEnum<const T extends readonly [string, ...string[]]>(values: T, fallback: T[number]) {
+  return z.preprocess(blankToUndefined, z.enum(values).optional().default(fallback));
+}
+
+/** Money that may be blank. Returns undefined when not provided. */
+export const optionalMoney = z
+  .union([z.string(), z.number()])
+  .optional()
+  .transform((v, ctx) => {
+    if (blankToUndefined(v) === undefined) return undefined;
+    const p = parseMoneyToPaise(v as string | number);
+    if (p === null) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Enter a valid amount in rupees" });
+      return z.NEVER;
+    }
+    return p;
+  });
+
+/**
+ * Text with a meaningful fallback, where blank means "use the fallback".
+ *
+ * `z.string().optional().default("INR")` stores "" when the form posts a blank
+ * field, silently wiping the currency, timezone or category list.
+ */
+export function defaultedText(fallback: string) {
+  return z.preprocess(blankToUndefined, z.string().optional().default(fallback));
+}
+
+/** Whole number that may be blank, with a fallback when absent. */
+export function optionalCount(min: number, max: number, label: string, fallback?: number) {
+  return z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((v, ctx) => {
+      if (blankToUndefined(v) === undefined) return fallback;
+      const n = Number(v);
+      if (!Number.isInteger(n) || n < min || n > max) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `${label} must be a whole number between ${min} and ${max}` });
+        return z.NEVER;
+      }
+      return n;
+    });
+}
+
 /** Shared enum lists. */
 export const ACQ_STATUSES = [
   "New enquiry",

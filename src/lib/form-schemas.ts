@@ -2,9 +2,9 @@ import { z } from "zod";
 import {
   CHECKLIST_AREAS, CONDITIONS, dateOnly, EXPENSE_CATEGORIES, HISTORY_STATES,
   INSPECTION_RESULTS, INSPECTION_TYPES, LEAD_SOURCES, LEAD_STATUSES, moneyInput,
-  looseOptionalPhone, optionalDateOnly, optionalEmail, optionalMoneyInput,
-  optionalText, optionalWholeNumber, PAYMENT_METHODS, PAYER_OPTIONS,
-  SERVICE_PRIORITIES, WORK_STAGES
+  defaultedText, looseOptionalPhone, optionalCount, optionalDateOnly, optionalEmail,
+  optionalEnum, optionalMoney, optionalMoneyInput, optionalText, optionalWholeNumber,
+  PAYMENT_METHODS, PAYER_OPTIONS, SERVICE_PRIORITIES, WORK_STAGES
 } from "./schema";
 
 const YEAR_MAX = new Date().getFullYear() + 1;
@@ -39,7 +39,7 @@ export const enquiryInputSchema = z
     sellerAltPhone: looseOptionalPhone,
     sellerEmail: optionalEmail,
     sellerAddress: optionalText,
-    leadSource: z.enum(LEAD_SOURCES).optional().default("Walk-in"),
+    leadSource: optionalEnum(LEAD_SOURCES, "Walk-in"),
 
     // Vehicle: everything optional. At least one identifying detail is required
     // below so the car is not completely anonymous.
@@ -48,8 +48,8 @@ export const enquiryInputSchema = z
     variant: optionalText,
     manufactureYear: optionalWholeNumber(1900, YEAR_MAX, "Manufacture year"),
     registrationYear: optionalWholeNumber(1900, YEAR_MAX, "Registration year"),
-    fuel: z.enum(["Petrol", "Diesel", "CNG", "Electric", "Hybrid"]).optional().default("Petrol"),
-    transmission: z.enum(["Manual", "Automatic"]).optional().default("Manual"),
+    fuel: optionalEnum(["Petrol", "Diesel", "CNG", "Electric", "Hybrid"], "Petrol"),
+    transmission: optionalEnum(["Manual", "Automatic"], "Manual"),
     bodyType: optionalText,
     colour: optionalText,
     odometerKm: optionalWholeNumber(0, 1_000_000, "Odometer"),
@@ -88,24 +88,24 @@ export type EnquiryInput = ServiceInput<typeof enquiryInputSchema>;
 export const checklistItemSchema = z.object({
   area: z.enum(CHECKLIST_AREAS),
   condition: z.enum(CONDITIONS),
-  finding: z.string().optional().default(""),
-  estimatedCost: moneyInput.optional(),
-  createWorkOrder: z.boolean().optional().default(false),
-  workCategory: z.string().optional().default("")
+  finding: optionalText,
+  estimatedCost: optionalMoney,
+  createWorkOrder: z.preprocess((v) => (v === "" ? undefined : v), z.boolean().optional().default(false)),
+  workCategory: optionalText
 });
 
 export const inspectionInputSchema = z.object({
   vehicleId: z.string().min(1),
-  acquisitionCaseId: z.string().optional().default(""),
+  acquisitionCaseId: optionalText,
   type: z.enum(INSPECTION_TYPES),
   date: dateOnly,
   odometerKm: optionalWholeNumber(0, 1_000_000, "Odometer"),
   overallResult: z.enum(INSPECTION_RESULTS),
-  estimatedRepair: moneyInput.optional(),
-  recommendedWork: z.string().optional().default(""),
-  notes: z.string().optional().default(""),
-  accidentHistory: z.enum(HISTORY_STATES).default("Unknown"),
-  floodHistory: z.enum(HISTORY_STATES).default("Unknown"),
+  estimatedRepair: optionalMoney,
+  recommendedWork: optionalText,
+  notes: optionalText,
+  accidentHistory: optionalEnum(HISTORY_STATES, "Unknown"),
+  floodHistory: optionalEnum(HISTORY_STATES, "Unknown"),
   items: z.array(checklistItemSchema).default([])
 });
 export type InspectionInput = ServiceInput<typeof inspectionInputSchema>;
@@ -113,20 +113,20 @@ export type InspectionInput = ServiceInput<typeof inspectionInputSchema>;
 /** Work orders */
 export const workOrderInputSchema = z.object({
   vehicleId: z.string().min(1),
-  acquisitionCaseId: z.string().optional().default(""),
-  saleId: z.string().optional().default(""),
+  acquisitionCaseId: optionalText,
+  saleId: optionalText,
   stage: z.enum(WORK_STAGES),
   issue: optionalText,
-  requiredWork: z.string().optional().default(""),
-  category: z.string().optional().default("General"),
-  vendorId: z.string().optional().default(""),
-  assignedTo: z.string().optional().default(""),
-  estimated: moneyInput.optional(),
+  requiredWork: optionalText,
+  category: defaultedText("General"),
+  vendorId: optionalText,
+  assignedTo: optionalText,
+  estimated: optionalMoney,
   startDate: optionalDateOnly,
   expectedCompletionDate: optionalDateOnly,
-  odometerKm: z.coerce.number().int().min(0).optional(),
-  payer: z.enum(PAYER_OPTIONS).default("Showroom"),
-  linkedWorkOrderRef: z.string().optional().default("")
+  odometerKm: optionalCount(0, 1_000_000, "Value"),
+  payer: optionalEnum(PAYER_OPTIONS, "Showroom"),
+  linkedWorkOrderRef: optionalText
 });
 export type WorkOrderInput = ServiceInput<typeof workOrderInputSchema>;
 
@@ -136,8 +136,8 @@ export const workCompletionSchema = z.object({
   other: optionalMoneyInput,
   tax: optionalMoneyInput,
   discount: optionalMoneyInput,
-  invoiceNumber: z.string().optional().default(""),
-  completionNotes: z.string().optional().default(""),
+  invoiceNumber: optionalText,
+  completionNotes: optionalText,
   completedOn: dateOnly
 });
 export type WorkCompletionInput = ServiceInput<typeof workCompletionSchema>;
@@ -146,28 +146,28 @@ export type WorkCompletionInput = ServiceInput<typeof workCompletionSchema>;
 export const accessoryInputSchema = z.object({
   vehicleId: z.string().min(1),
   item: optionalText,
-  quantity: z.coerce.number().int().min(1).default(1),
+  quantity: optionalCount(1, 9999, "Quantity", 1),
   unitCost: moneyInput,
-  vendorId: z.string().optional().default(""),
+  vendorId: optionalText,
   installedOn: optionalDateOnly,
-  required: z.boolean().default(false),
-  workOrderId: z.string().optional().default(""),
-  payer: z.enum(PAYER_OPTIONS).default("Showroom"),
-  notes: z.string().optional().default("")
+  required: z.preprocess((v) => (v === "" ? undefined : v), z.boolean().optional().default(false)),
+  workOrderId: optionalText,
+  payer: optionalEnum(PAYER_OPTIONS, "Showroom"),
+  notes: optionalText
 });
 export type AccessoryInput = ServiceInput<typeof accessoryInputSchema>;
 
 export const expenseInputSchema = z.object({
   vehicleId: z.string().min(1),
-  saleId: z.string().optional().default(""),
-  serviceJobId: z.string().optional().default(""),
+  saleId: optionalText,
+  serviceJobId: optionalText,
   category: z.enum(EXPENSE_CATEGORIES),
   date: dateOnly,
   amount: moneyInput,
-  payer: z.enum(PAYER_OPTIONS).default("Showroom"),
-  vendorId: z.string().optional().default(""),
-  reference: z.string().optional().default(""),
-  notes: z.string().optional().default("")
+  payer: optionalEnum(PAYER_OPTIONS, "Showroom"),
+  vendorId: optionalText,
+  reference: optionalText,
+  notes: optionalText
 });
 export type ExpenseInput = ServiceInput<typeof expenseInputSchema>;
 
@@ -177,41 +177,41 @@ export const customerInputSchema = z.object({
   phone: looseOptionalPhone,
   altPhone: looseOptionalPhone,
   email: optionalEmail,
-  address: z.string().optional().default(""),
-  idType: z.string().optional().default(""),
-  idNumberMasked: z.string().optional().default(""),
-  notes: z.string().optional().default("")
+  address: optionalText,
+  idType: optionalText,
+  idNumberMasked: optionalText,
+  notes: optionalText
 });
 export type CustomerInput = ServiceInput<typeof customerInputSchema>;
 
 export const leadInputSchema = z.object({
   customerId: z.string().min(1, "Choose the customer"),
-  vehicleId: z.string().optional().default(""),
+  vehicleId: optionalText,
   source: z.enum(LEAD_SOURCES),
-  budget: moneyInput.optional(),
-  status: z.enum(LEAD_STATUSES).default("New"),
-  assignedTo: z.string().optional().default(""),
-  notes: z.string().optional().default("")
+  budget: optionalMoney,
+  status: optionalEnum(LEAD_STATUSES, "New"),
+  assignedTo: optionalText,
+  notes: optionalText
 });
 export type LeadInput = ServiceInput<typeof leadInputSchema>;
 
 export const followUpInputSchema = z.object({
-  leadId: z.string().optional().default(""),
+  leadId: optionalText,
   customerId: z.string().min(1, "Choose the customer"),
-  vehicleId: z.string().optional().default(""),
+  vehicleId: optionalText,
   dueDate: dateOnly,
   note: optionalText,
-  status: z.enum(["Open", "Done", "Cancelled"]).default("Open")
+  status: optionalEnum(["Open", "Done", "Cancelled"], "Open")
 });
 export type FollowUpInput = ServiceInput<typeof followUpInputSchema>;
 
 export const testDriveInputSchema = z.object({
-  leadId: z.string().optional().default(""),
+  leadId: optionalText,
   customerId: z.string().min(1, "Choose the customer"),
   vehicleId: z.string().min(1, "Choose the vehicle"),
   scheduledAt: z.string().min(5, "Pick a date and time"),
-  staffId: z.string().optional().default(""),
-  notes: z.string().optional().default("")
+  staffId: optionalText,
+  notes: optionalText
 });
 export type TestDriveInput = ServiceInput<typeof testDriveInputSchema>;
 
@@ -224,8 +224,8 @@ export const reservationInputSchema = z.object({
   bookingAmount: moneyInput,
   bookingDate: dateOnly,
   expiresOn: optionalDateOnly,
-  terms: z.string().optional().default(""),
-  notes: z.string().optional().default("")
+  terms: optionalText,
+  notes: optionalText
 });
 export type ReservationInput = ServiceInput<typeof reservationInputSchema>;
 
@@ -233,23 +233,23 @@ export const saleInputSchema = z.object({
   vehicleId: z.string().min(1),
   customerName: optionalText,
   customerPhone: looseOptionalPhone,
-  reservationId: z.string().optional().default(""),
+  reservationId: optionalText,
   finalNetPrice: moneyInput,
   saleDate: dateOnly,
-  paymentTerms: z.string().optional().default(""),
-  notes: z.string().optional().default("")
+  paymentTerms: optionalText,
+  notes: optionalText
 });
 export type SaleInput = ServiceInput<typeof saleInputSchema>;
 
 export const salePaymentInputSchema = z.object({
   saleId: z.string().min(1),
   date: dateOnly,
-  kind: z.enum(["Part payment", "Final payment"]).default("Part payment"),
+  kind: optionalEnum(["Part payment", "Final payment"], "Part payment"),
   amount: moneyInput,
   method: z.enum(PAYMENT_METHODS),
-  reference: z.string().optional().default(""),
-  notes: z.string().optional().default(""),
-  idempotencyKey: z.string().optional().default("")
+  reference: optionalText,
+  notes: optionalText,
+  idempotencyKey: optionalText
 });
 export type SalePaymentInput = ServiceInput<typeof salePaymentInputSchema>;
 
@@ -268,9 +268,9 @@ export const purchasePaymentInputSchema = z.object({
   date: dateOnly,
   amount: moneyInput,
   method: z.enum(PAYMENT_METHODS),
-  reference: z.string().optional().default(""),
-  notes: z.string().optional().default(""),
-  documentFileId: z.string().optional().default("")
+  reference: optionalText,
+  notes: optionalText,
+  documentFileId: optionalText
 });
 export type PurchasePaymentInput = ServiceInput<typeof purchasePaymentInputSchema>;
 
@@ -278,17 +278,17 @@ export type PurchasePaymentInput = ServiceInput<typeof purchasePaymentInputSchem
 export const completeDeliveryInputSchema = z.object({
   saleId: z.string().min(1),
   deliveryDate: dateOnly,
-  odometerKm: z.coerce.number().int().min(0),
+  odometerKm: optionalCount(0, 1_000_000, "Value"),
   items: z.array(z.object({
     kind: z.string(),
     label: z.string(),
     mandatory: z.boolean(),
     done: z.boolean(),
-    note: z.string().optional().default("")
+    note: optionalText
   })),
-  instructions: z.string().optional().default(""),
-  allowOutstandingBalance: z.boolean().optional().default(false),
-  exceptionReason: z.string().optional().default("")
+  instructions: optionalText,
+  allowOutstandingBalance: z.preprocess((v) => (v === "" ? undefined : v), z.boolean().optional().default(false)),
+  exceptionReason: optionalText
 });
 export type CompleteDeliveryInput = ServiceInput<typeof completeDeliveryInputSchema>;
 
@@ -297,12 +297,12 @@ export const commitmentInputSchema = z.object({
   saleId: z.string().min(1),
   kind: z.enum(["Free service", "Promised repair", "Extended coverage"]),
   coverage: z.string().min(3, "Describe the coverage"),
-  exclusions: z.string().optional().default(""),
+  exclusions: optionalText,
   startDate: dateOnly,
   endDate: optionalDateOnly,
-  odometerLimit: z.coerce.number().int().min(0).optional(),
-  eligibleServices: z.coerce.number().int().min(0).optional(),
-  approvalNotes: z.string().optional().default("")
+  odometerLimit: optionalCount(0, 1_000_000, "Value"),
+  eligibleServices: optionalCount(0, 1_000_000, "Value"),
+  approvalNotes: optionalText
 });
 export type CommitmentInput = ServiceInput<typeof commitmentInputSchema>;
 
@@ -310,57 +310,56 @@ export const serviceRequestInputSchema = z.object({
   saleId: z.string().min(1, "Choose the sale"),
   complaint: z.string().min(5, "Describe the complaint"),
   reportedDate: dateOnly,
-  odometerKm: z.coerce.number().int().min(0).optional(),
-  priority: z.enum(SERVICE_PRIORITIES).default("Normal"),
-  appointmentAt: z.string().optional().default(""),
-  notes: z.string().optional().default("")
+  odometerKm: optionalCount(0, 1_000_000, "Value"),
+  priority: optionalEnum(SERVICE_PRIORITIES, "Normal"),
+  appointmentAt: optionalText,
+  notes: optionalText
 });
 export type ServiceRequestInput = ServiceInput<typeof serviceRequestInputSchema>;
 
 export const serviceJobInputSchema = z.object({
   serviceRequestId: z.string().min(1),
   date: dateOnly,
-  odometerKm: z.coerce.number().int().min(0).optional(),
+  odometerKm: optionalCount(0, 1_000_000, "Value"),
   workDone: z.string().min(3, "Describe the work done"),
-  diagnosis: z.string().optional().default(""),
-  parts: moneyInput.optional(),
-  labour: moneyInput.optional(),
-  vendorId: z.string().optional().default(""),
-  staffId: z.string().optional().default("")
+  diagnosis: optionalText,
+  parts: optionalMoney,
+  labour: optionalMoney,
+  vendorId: optionalText,
+  staffId: optionalText
 });
 export type ServiceJobInput = ServiceInput<typeof serviceJobInputSchema>;
 
 export const serviceChargeInputSchema = z.object({
   serviceRequestId: z.string().min(1),
   date: dateOnly,
-  kind: z.enum(["Charge", "Refund", "Adjustment"]).default("Charge"),
+  kind: optionalEnum(["Charge", "Refund", "Adjustment"], "Charge"),
   amount: moneyInput,
   method: z.enum(PAYMENT_METHODS),
-  reference: z.string().optional().default(""),
-  notes: z.string().optional().default("")
+  reference: optionalText,
+  notes: optionalText
 });
 export type ServiceChargeInput = ServiceInput<typeof serviceChargeInputSchema>;
 
 /** Settings */
 export const settingsInputSchema = z.object({
   showroomName: z.string().min(2, "Enter the showroom name"),
-  tagline: z.string().optional().default(""),
-  phone: z.string().optional().default(""),
-  whatsapp: z.string().optional().default(""),
+  tagline: optionalText,
+  phone: optionalText,
+  whatsapp: optionalText,
   email: optionalEmail,
-  address: z.string().optional().default(""),
-  googleMapsLink: z.string().optional().default(""),
-  logoFileId: z.string().optional().default(""),
-  currency: z.string().default("INR"),
-  timezone: z.string().default("Asia/Kolkata"),
-  odometerUnit: z.string().default("km"),
-  defaultDeliveryChecklist: z.string().optional().default(""),
-  defaultExpenseCategories: z
-    .string()
-    .optional()
-    .default("Transportation, Insurance, Documentation, Parking, Advertising, Inspection fee, Miscellaneous"),
-  serviceDefaults: z.string().optional().default(""),
-  publicContactNote: z.string().optional().default("")
+  address: optionalText,
+  googleMapsLink: optionalText,
+  logoFileId: optionalText,
+  currency: defaultedText("INR"),
+  timezone: defaultedText("Asia/Kolkata"),
+  odometerUnit: defaultedText("km"),
+  defaultDeliveryChecklist: optionalText,
+  defaultExpenseCategories: defaultedText(
+      "Transportation, Insurance, Documentation, Parking, Advertising, Inspection fee, Miscellaneous"
+    ),
+  serviceDefaults: optionalText,
+  publicContactNote: optionalText
 });
 export type SettingsInput = ServiceInput<typeof settingsInputSchema>;
 
@@ -368,7 +367,7 @@ export const staffInputSchema = z.object({
   email: z.string().email("Enter a valid email"),
   name: z.string().min(2, "Enter the staff name"),
   role: z.enum(["owner", "sales", "operations", "accounts"]),
-  phone: z.string().optional().default(""),
-  active: z.boolean().default(true)
+  phone: optionalText,
+  active: z.preprocess((v) => (v === "" ? undefined : v), z.boolean().optional().default(true))
 });
 export type StaffInput = ServiceInput<typeof staffInputSchema>;

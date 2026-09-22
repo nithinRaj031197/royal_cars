@@ -9,6 +9,7 @@
 | `tests/password.test.ts` | Password hashing and policy |
 | `tests/api-errors.test.ts` | Error mapping and IST business dates |
 | `tests/concurrency-media-projection.test.ts` | Races, uploads, confidential projections |
+| `tests/form-contracts.test.ts` | Every form's payload shape, including blank fields |
 
 Run with `pnpm test`. They use the in-memory store, so they are fast and need no
 Google credentials.
@@ -32,6 +33,32 @@ Google credentials.
 15. Role enforcement and confidential projections
 16. Interrupted operations recorded for reconciliation
 17. Partial records from migrated history
+
+## Form payload contracts
+
+`tests/form-contracts.test.ts` exercises each schema the way a browser does: a
+flat object of **strings**, with `""` for anything the user left alone — never
+`undefined`. For every form it asserts four things:
+
+1. the minimal payload is accepted;
+2. a fully filled payload is accepted;
+3. **a blank form parses** — every optional field tolerates `""`;
+4. **`""` and an omitted key mean the same thing**;
+5. the structurally required fields still are (blanking them must fail).
+
+Property 4 is the valuable one. Zod's `.default()` only fires for `undefined`,
+so `z.enum([...]).default("Walk-in")` *rejects* a blank select, and
+`z.string().default("INR")` silently stores `""`. Writing these tests found both:
+24 of the first 95 assertions failed, across enums, optional money, counts,
+booleans and defaulted strings — including a settings save that would have wiped
+the currency and timezone.
+
+The blank-form simulation blanks scalars only; a checklist array is built by the
+UI and never posted as `""`.
+
+Round-trip tests then confirm a blank-heavy payload reaches the store correctly:
+unknown numbers stored blank rather than `0`, defaults applied, and the
+no-double-counting rules still holding.
 
 ## What is deliberately *not* unit-tested
 
