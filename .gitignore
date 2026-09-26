@@ -18,3 +18,8 @@ secrets/
 
 # Local tooling
 .freebuff/
+
+# Cypress artefacts
+cypress/screenshots/
+cypress/videos/
+cypress/downloads/

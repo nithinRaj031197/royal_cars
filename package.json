@@ -18,7 +18,11 @@
     "sheets:seed": "tsx scripts/sheets-seed.ts",
     "sheets:audit": "tsx scripts/sheets-audit.ts",
     "sheets:reset": "tsx scripts/sheets-reset.ts",
-    "schema:export": "tsx scripts/export-schema.ts"
+    "schema:export": "tsx scripts/export-schema.ts",
+    "e2e:server": "DEMO_MODE=1 NEXTAUTH_SECRET=cypress-test-secret-0123456789abcd NEXTAUTH_URL=http://localhost:3200 next dev -p 3200",
+    "e2e:run": "env -u ELECTRON_RUN_AS_NODE -u ELECTRON_NO_ATTACH_CONSOLE cypress run",
+    "e2e:open": "env -u ELECTRON_RUN_AS_NODE -u ELECTRON_NO_ATTACH_CONSOLE cypress open",
+    "e2e": "start-server-and-test e2e:server http://localhost:3200/login e2e:run"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
@@ -44,9 +48,11 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "autoprefixer": "^10.4.20",
+    "cypress": "^13.17.0",
     "eslint": "^9",
     "eslint-config-next": "^15",
     "postcss": "^8.5.0",
+    "start-server-and-test": "^3.0.12",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",

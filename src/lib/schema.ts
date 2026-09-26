@@ -3,6 +3,18 @@ import { parseMoneyToPaise } from "./money";
 import { isValidDateOnly } from "./dates";
 
 /** Money fields accept "123456.78", "1,23,456" or numbers; stored as integer paise. */
+/**
+ * Blank in, absent out.
+ *
+ * An empty form control reaches the server as "" from a text input but as
+ * `null` from a number input, and an untouched field is absent entirely. All
+ * three mean "the showroom does not have this yet", so they must collapse to
+ * undefined BEFORE any type check runs — a union of string|number rejects null
+ * outright, and a transform never gets the chance to clean it up.
+ */
+const blankToUndefined = (v: unknown) =>
+  v === "" || v === null || (typeof v === "string" && v.trim() === "") ? undefined : v;
+
 export const moneyInput = z
   .union([z.string(), z.number()])
   .transform((v, ctx) => {
@@ -14,10 +26,13 @@ export const moneyInput = z
     return p;
   });
 
-export const optionalMoneyInput = z
-  .union([z.string(), z.number()])
-  .optional()
-  .transform((v) => (v === undefined || v === "" ? null : parseMoneyToPaise(v)));
+export const optionalMoneyInput = z.preprocess(
+  blankToUndefined,
+  z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((v) => (v === undefined ? null : parseMoneyToPaise(v)))
+);
 
 export const dateOnly = z
   .string()
@@ -77,18 +92,21 @@ export const looseOptionalPhone = z
 
 /** Whole number within a range, or blank. Returns undefined when not provided. */
 export function optionalWholeNumber(min: number, max: number, label: string) {
-  return z
-    .union([z.string(), z.number()])
-    .optional()
-    .transform((v, ctx) => {
-      if (v === undefined || v === null || String(v).trim() === "") return undefined;
-      const n = Number(v);
-      if (!Number.isInteger(n) || n < min || n > max) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `${label} must be a whole number between ${min} and ${max}` });
-        return z.NEVER;
-      }
-      return n;
-    });
+  return z.preprocess(
+    blankToUndefined,
+    z
+      .union([z.string(), z.number()])
+      .optional()
+      .transform((v, ctx) => {
+        if (v === undefined) return undefined;
+        const n = Number(v);
+        if (!Number.isInteger(n) || n < min || n > max) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: `${label} must be a whole number between ${min} and ${max}` });
+          return z.NEVER;
+        }
+        return n;
+      })
+  );
 }
 
 /**
@@ -100,8 +118,6 @@ export function optionalWholeNumber(min: number, max: number, label: string) {
  * `moneyInput.optional()` rejects a blank amount with "Enter a valid amount".
  * These wrappers normalise "" to undefined first, so blank means absent.
  */
-const blankToUndefined = (v: unknown) =>
-  v === "" || v === null || (typeof v === "string" && v.trim() === "") ? undefined : v;
 
 /** An enum that falls back to `fallback` when the field is blank or absent. */
 export function optionalEnum<const T extends readonly [string, ...string[]]>(values: T, fallback: T[number]) {
@@ -109,18 +125,21 @@ export function optionalEnum<const T extends readonly [string, ...string[]]>(val
 }
 
 /** Money that may be blank. Returns undefined when not provided. */
-export const optionalMoney = z
-  .union([z.string(), z.number()])
-  .optional()
-  .transform((v, ctx) => {
-    if (blankToUndefined(v) === undefined) return undefined;
-    const p = parseMoneyToPaise(v as string | number);
-    if (p === null) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Enter a valid amount in rupees" });
-      return z.NEVER;
-    }
-    return p;
-  });
+export const optionalMoney = z.preprocess(
+  blankToUndefined,
+  z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((v, ctx) => {
+      if (v === undefined) return undefined;
+      const p = parseMoneyToPaise(v as string | number);
+      if (p === null) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Enter a valid amount in rupees" });
+        return z.NEVER;
+      }
+      return p;
+    })
+);
 
 /**
  * Text with a meaningful fallback, where blank means "use the fallback".
@@ -134,18 +153,21 @@ export function defaultedText(fallback: string) {
 
 /** Whole number that may be blank, with a fallback when absent. */
 export function optionalCount(min: number, max: number, label: string, fallback?: number) {
-  return z
-    .union([z.string(), z.number()])
-    .optional()
-    .transform((v, ctx) => {
-      if (blankToUndefined(v) === undefined) return fallback;
-      const n = Number(v);
-      if (!Number.isInteger(n) || n < min || n > max) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `${label} must be a whole number between ${min} and ${max}` });
-        return z.NEVER;
-      }
-      return n;
-    });
+  return z.preprocess(
+    blankToUndefined,
+    z
+      .union([z.string(), z.number()])
+      .optional()
+      .transform((v, ctx) => {
+        if (v === undefined) return fallback;
+        const n = Number(v);
+        if (!Number.isInteger(n) || n < min || n > max) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: `${label} must be a whole number between ${min} and ${max}` });
+          return z.NEVER;
+        }
+        return n;
+      })
+  );
 }
 
 /** Shared enum lists. */
