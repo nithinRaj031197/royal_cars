@@ -3,6 +3,9 @@
 export const DEMO_OWNER = { email: "owner@royalcars.demo", password: "Showroom-Demo-2026" };
 
 declare global {
+  // Cypress augments its Chainable interface through this namespace; there is
+  // no module-syntax equivalent for it.
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Cypress {
     interface Chainable {
       /** Signs in through the real login form. Cached across specs via cy.session. */
@@ -15,6 +18,14 @@ declare global {
       fill(label: string | RegExp, value: string): Chainable<void>;
       /** Submits the primary form and waits for navigation away or an error. */
       submitForm(): Chainable<void>;
+      /**
+       * Buys a car through the real acquisition API and returns its vehicle id.
+       *
+       * The demo dataset holds a single sellable car, so any spec that reserves
+       * or sells it starves the ones that follow. Each spec that consumes a
+       * vehicle makes its own instead.
+       */
+      createSellableVehicle(label?: string): Chainable<string>;
     }
   }
 }
@@ -99,4 +110,25 @@ Cypress.Commands.add("fill", (label: string | RegExp, value: string) => {
  */
 Cypress.Commands.add("submitForm", () => {
   cy.get('button.btn-primary, button[type="submit"]').filter(":visible").last().click();
+});
+
+
+Cypress.Commands.add("createSellableVehicle", (label = "Cypress") => {
+  const stamp = `${label}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  return cy
+    .request("POST", "/api/acquisitions", { sellerName: `${stamp} Seller`, model: stamp })
+    .then((created) => {
+      const caseId = created.body.caseRow.id as string;
+      const vehicleId = created.body.vehicle.id as string;
+      return cy
+        .request("POST", `/api/acquisitions/${caseId}`, { action: "approve", agreedPrice: "400000" })
+        .then(() =>
+          cy.request("POST", `/api/acquisitions/${caseId}`, {
+            action: "acquire",
+            purchasePrice: "400000",
+            purchaseDate: new Date().toISOString().slice(0, 10)
+          })
+        )
+        .then(() => vehicleId);
+    });
 });

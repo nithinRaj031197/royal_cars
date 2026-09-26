@@ -9,11 +9,9 @@ describe("Sales, payments and delivery", () => {
 
   it("records a sale against an available vehicle", () => {
     const buyer = `Cypress Buyer ${Date.now()}`;
-    cy.visit("/sales/new");
-    cy.field("Vehicle").find("option").its("length").should("be.greaterThan", 1);
-    cy.field("Vehicle").then(($s) => {
-      const value = $s.find("option").not('[value=""]').first().attr("value") ?? "";
-      cy.wrap($s).select(value, { force: true });
+    cy.createSellableVehicle("Sale").then((vehicleId) => {
+      cy.visit("/sales/new");
+      cy.field("Vehicle").select(vehicleId, { force: true });
     });
     cy.fill("Customer name", buyer);
     cy.fill("Customer phone", "9845777888");
