@@ -27,7 +27,24 @@ function envHas(name: string): boolean {
   return typeof v === "string" && v.length > 0;
 }
 
+/**
+ * NextAuth refuses to run in production without a secret, and the failure
+ * surfaces as a generic 500 on every route that reads a session — with nothing
+ * in the response naming the missing variable. Fail with a message that names
+ * it, so the deployment log says what to set.
+ */
+function assertProductionSecret(): void {
+  if (process.env.NODE_ENV !== "production") return;
+  if (envHas("NEXTAUTH_SECRET")) return;
+  throw new Error(
+    "NEXTAUTH_SECRET is not set. Sign-in cannot work in production without it, " +
+      "and every page that reads a session will fail with a 500. Generate one " +
+      "with `openssl rand -base64 32` and set it in your host's environment variables."
+  );
+}
+
 export function nextAuthOptions(): NextAuthOptions {
+  assertProductionSecret();
   const demoMode = process.env.DEMO_MODE === "1" || process.env.DEMO_MODE === "true";
 
   const providers: NextAuthOptions["providers"] = [];
