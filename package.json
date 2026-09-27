@@ -28,7 +28,8 @@
     "e2e:sheets:snapshot": "tsx scripts/e2e-sheets/snapshot.ts",
     "e2e:sheets:verify": "tsx scripts/e2e-sheets/verify.ts",
     "e2e:sheets:cleanup": "tsx scripts/e2e-sheets/cleanup.ts",
-    "field:audit": "tsx scripts/field-audit.ts"
+    "field:audit": "tsx scripts/field-audit.ts",
+    "gateway:deploy": "tsx scripts/deploy-gateway.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

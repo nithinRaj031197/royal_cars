@@ -5,10 +5,13 @@
 import { google } from "googleapis";
 import { googleAuthConfig } from "../../src/lib/config/google-credentials";
 
-const MARKER = /CYTEST-|CURLPROBE|LAGPROBE/;
+// Case-insensitive: the signup service lowercases email, so a tagged
+// test email like CYTEST-... is stored as cytest-... and a case-sensitive
+// marker would miss it entirely, leaving that row un-cleaned.
+const MARKER = /CYTEST-|CURLPROBE|LAGPROBE/i;
 
 const TABS = [
-  "Sellers", "Vehicles", "AcquisitionCases", "PurchasePayments", "Inspections", "InspectionItems",
+  "Staff", "Sellers", "Vehicles", "AcquisitionCases", "PurchasePayments", "Inspections", "InspectionItems",
   "WorkOrders", "WorkOrderItems", "Accessories", "Expenses", "PriceHistory", "Customers", "Leads",
   "FollowUps", "TestDrives", "Reservations", "Sales", "SalePayments", "DeliveryChecklists",
   "ServiceCommitments", "ServiceRequests", "ServiceJobs", "ServiceCharges",
