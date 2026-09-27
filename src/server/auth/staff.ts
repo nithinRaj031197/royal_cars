@@ -6,11 +6,14 @@ import { todayISO } from "@/lib/dates";
 /**
  * Sign-in against the Staff tab.
  *
- * Roles that may sign in today. The other roles exist in the data and the
- * permission model, but their screens are not ready, so they are refused at the
- * door rather than shown a half-built app. Widening this is a one-line change.
+ * Roles that may sign in. This used to be `["owner"]` only, while sales,
+ * operations and accounts screens were unfinished. Those screens now exist
+ * and are exercised per-role in the Cypress permission suite
+ * (cypress/e2e/11-permissions.cy.ts), so the real gate on a non-owner
+ * account is now `active` — an owner approving a signed-up account from
+ * Settings — not a blanket role restriction.
  */
-export const LOGIN_ENABLED_ROLES: Role[] = ["owner"];
+export const LOGIN_ENABLED_ROLES: Role[] = ["owner", "sales", "operations", "accounts"];
 
 /** Wrong password attempts before the account is temporarily locked. */
 const MAX_FAILED_ATTEMPTS = 5;
@@ -103,7 +106,7 @@ export function describeSignInFailure(result: { reason: SignInFailure; retryAfte
     case "locked":
       return `Too many attempts. Try again in ${result.retryAfterMinutes ?? LOCKOUT_MINUTES} minutes.`;
     case "inactive":
-      return "That account has been deactivated. Ask an owner to re-enable it.";
+      return "This account is not active yet. If you just signed up, an owner needs to approve it from Settings; if it was working before, ask an owner to re-enable it.";
     case "role-not-enabled":
       return "Sign-in is currently limited to owner accounts.";
     case "no-password":

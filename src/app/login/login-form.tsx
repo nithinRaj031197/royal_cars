@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { Button, Field } from "@/components/ui";
 
@@ -86,8 +87,12 @@ export function LoginForm({ demo }: { demo: boolean }) {
       </Button>
 
       <p className="text-center text-xs leading-relaxed text-slate-500">
-        Accounts are created by an owner — there is no self sign-up. If you have
-        forgotten your password, ask an owner to set a new one.
+        New here?{" "}
+        <Link href="/signup" className="font-medium text-slate-700 hover:text-slate-900">
+          Request an account
+        </Link>{" "}
+        — an owner approves it before you can sign in. Forgotten your password?
+        Ask an owner to set a new one.
       </p>
 
       {demo ? (

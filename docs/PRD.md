@@ -53,6 +53,7 @@ twice. That page is `/ledger/[id]`.
 
 ## Deliberate non-goals
 
-- No self sign-up. Accounts are created by an owner.
+- Accounts are created by an owner, or requested via self sign-up (`/signup`)
+  and approved by an owner before they can sign in.
 - No automatic warranty. Nothing is promised to a customer unless recorded.
 - No vehicle-level figure presented as business profit; overhead is excluded.

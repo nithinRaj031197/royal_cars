@@ -19,7 +19,7 @@ npx tsx scripts/field-audit.ts
 
 ## Summary
 
-**209 fields across 23 forms. 63 mandatory, 146 optional.**
+**213 fields across 24 forms. 67 mandatory, 146 optional.**
 
 | Form | Mandatory fields | Optional field count |
 |---|---|---|
@@ -46,6 +46,7 @@ npx tsx scripts/field-audit.ts
 | Service charge — service request detail | serviceRequestId, date, amount, method | 3 |
 | Settings — `/settings` | showroomName | 14 |
 | Staff account — `/settings` (staff) | email, name, role | 2 |
+| Self sign-up — `/signup` | email, name, password, role | 0 |
 
 **Note on the acquisition form:** its schema requires nothing directly — every
 field, including seller name and vehicle registration, can individually be
@@ -185,6 +186,13 @@ cannot be saved completely empty.
 ### Staff account — `/settings` (staff)
 - `email`, `name`, `role`
 - Phone is optional. "Active" defaults to true.
+
+### Self sign-up — `/signup`
+- `email`, `name`, `password`, `role` — **every field on this form is
+  mandatory.** `role` is restricted to `sales`, `operations` or `accounts`;
+  `owner` is not a selectable option on this public form (see
+  `docs/DECISIONS.md`). The account is created with `active: false` — it
+  cannot sign in until an owner approves it from Settings → Staff.
 
 ## Conditional / business-rule requirements not visible in a form schema
 

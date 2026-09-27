@@ -31,7 +31,8 @@ const LABELS: Record<string, string> = {
   serviceJobInputSchema: "Service job — service request detail",
   serviceChargeInputSchema: "Service charge — service request detail",
   settingsInputSchema: "Settings — /settings",
-  staffInputSchema: "Staff account — /settings (staff)"
+  staffInputSchema: "Staff account — /settings (staff)",
+  signupInputSchema: "Self sign-up — /signup"
 };
 
 function unwrap(schema: z.ZodTypeAny): z.ZodObject<z.ZodRawShape> | null {

@@ -12,8 +12,17 @@
 - **5 failed attempts locks the account for 15 minutes.**
 - Every failure returns the same message, so the form cannot be used to discover
   which addresses are staff.
-- **No self sign-up.** Accounts exist because an owner ran `pnpm staff:password`.
-- Sign-in is currently limited to **owner** (`LOGIN_ENABLED_ROLES`).
+- Accounts exist because an owner ran `pnpm staff:password`, or because
+  someone requested one at `/signup`. Either way, an account cannot sign in
+  until `active` is true — set at creation by an owner, or flipped from
+  `false` to `true` by an owner approving a self sign-up from Settings →
+  Staff.
+- All four roles may attempt sign-in (`LOGIN_ENABLED_ROLES`); `active` is the
+  gate, not the role.
+- `/signup` cannot mint an `owner` account — that role is not a selectable
+  option on the public form (`signupInputSchema` restricts it to sales,
+  operations, accounts). Password strength is checked
+  (`describePasswordProblem`) before any row is created.
 
 ### Known risk: hashes live in a spreadsheet
 

@@ -1,9 +1,9 @@
 import { requireSession } from "@/server/auth";
 import { getRepo } from "@/lib/repo";
 import { can } from "@/lib/permissions";
-import { PageHeader } from "@/components/ui";
+import { PageHeader, StatusBadge } from "@/components/ui";
 import { getSettings } from "@/server/services/settings";
-import { SettingsForm, StaffForm, ImportForm, ReconcileButton } from "./settings-forms";
+import { SettingsForm, StaffForm, StaffStatusButton, ImportForm, ReconcileButton } from "./settings-forms";
 
 export const dynamic = "force-dynamic";
 
@@ -25,17 +25,40 @@ export default async function SettingsPage() {
 
         <div className="min-w-0 space-y-4">
           <div className="card p-4">
+            {(() => {
+              const pending = staff.filter((s) => s.active === "FALSE");
+              return pending.length && can(user, "staff.manage") ? (
+                <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  {pending.length} account{pending.length === 1 ? "" : "s"} waiting for approval — see below.
+                </div>
+              ) : null;
+            })()}
             <h2 className="mb-2 font-semibold">Staff ({staff.length})</h2>
             <div className="table-scroll -mx-4 px-4">
             <table className="table-base table-sticky-first">
-              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Active</th></tr></thead>
+              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th>{can(user, "staff.manage") ? <th /> : null}</tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {staff.map((s) => (
                   <tr key={s.id}>
                     <td>{s.name}</td>
                     <td className="text-xs">{s.email}</td>
                     <td>{s.role}</td>
-                    <td>{s.active === "FALSE" ? "No" : "Yes"}</td>
+                    <td><StatusBadge status={s.active === "FALSE" ? "Pending" : "Active"} /></td>
+                    {can(user, "staff.manage") ? (
+                      <td>
+                        {(s.email ?? "").toLowerCase() === user.email.toLowerCase() ? (
+                          <span className="text-xs text-slate-400">(you)</span>
+                        ) : (
+                          <StaffStatusButton
+                            email={s.email ?? ""}
+                            name={s.name ?? ""}
+                            role={s.role ?? "sales"}
+                            phone={s.phone ?? ""}
+                            active={s.active !== "FALSE"}
+                          />
+                        )}
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>

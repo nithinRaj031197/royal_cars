@@ -371,3 +371,18 @@ export const staffInputSchema = z.object({
   active: z.preprocess((v) => (v === "" ? undefined : v), z.boolean().optional().default(true))
 });
 export type StaffInput = ServiceInput<typeof staffInputSchema>;
+
+/**
+ * Self sign-up request.
+ *
+ * `owner` is deliberately excluded — that role is not self-selectable from a
+ * public form. An owner account is created only via `pnpm staff:password` or
+ * by promoting a pending request at approval time in Settings.
+ */
+export const signupInputSchema = z.object({
+  email: z.string().email("Enter a valid email"),
+  name: z.string().min(2, "Enter your name"),
+  password: z.string().min(1, "Enter a password"),
+  role: z.enum(["sales", "operations", "accounts"])
+});
+export type SignupInput = z.infer<typeof signupInputSchema>;

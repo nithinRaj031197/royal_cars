@@ -80,3 +80,44 @@ limits, and the owner can edit it directly.
 **Cost, stated honestly:** every query is a full-tab read, so reads are batched
 and cached for 15s; critical writes need a shared lock; manual edits bypass
 validation and audit, and are detected by `pnpm sheets:audit`, not prevented.
+
+## Self sign-up + owner approval, reusing `active` rather than a new column
+
+Staff already had an `active` flag, checked by `signInWithPassword` and by the
+NextAuth `signIn` callback, with a clear "inactive" rejection message. A
+sign-up request is created as an ordinary Staff row with `active: "FALSE"` —
+the exact same gate an owner already used to disable an account, now also
+covering "never yet enabled." Approving is flipping that one flag from
+Settings, not a second review workflow with its own status column.
+
+**Cost:** "inactive" now means two different histories (revoked vs. never
+approved) behind one message. Accepted because the message text covers both
+("ask an owner to approve or re-enable it") and a fifth status enum would be
+schema growth for a distinction the owner does not need to act on differently.
+
+This also removed the blanket `LOGIN_ENABLED_ROLES = ["owner"]` restriction —
+now all four roles may attempt sign-in, and `active` is the real gate. That
+restriction existed only because the sales/operations/accounts screens were
+unfinished; they are exercised per-role in the Cypress permission suite now,
+so the restriction was blocking a decision the approval flag already makes.
+
+## Removed: Google OAuth sign-in, `GATEWAY_TOKEN`, `OWNER_EMAIL`
+
+Three env-var-backed code paths were cut, not just left undocumented:
+
+- **`GoogleProvider`** was registered in `nextAuthOptions()` whenever
+  `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` were set, but no page ever called
+  `signIn("google")` — dead on the server, unreachable from the client.
+- **`GATEWAY_TOKEN`** was documented as an alternative to
+  `GATEWAY_HMAC_SECRET`, but `Gateway.gs` only ever verified an HMAC
+  signature — there was never a token-checking branch on the Apps Script
+  side for it to pair with. Worse: `gatewayHmacSecret ?? gatewayToken ??
+  "insecure-dev"` meant an unset secret silently signed every critical write
+  with a hardcoded, publicly-known string rather than failing. `hmac()` now
+  throws if `GATEWAY_HMAC_SECRET` is missing.
+- **`OWNER_EMAIL`** had a getter in `env.ts` that nothing called; the actual
+  first-owner path is `pnpm staff:password -- --email <you> --role owner`.
+
+None of these were flagged as planned/future work anywhere in the docs — they
+were simply never finished being wired up, so removing them changes no
+working flow.

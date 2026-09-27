@@ -10,9 +10,19 @@ button at the top left; tables become cards.
 
 ## Signing in
 
-Use the **Sign in with Google** button with your work account. If you see
-"access denied", your address has not been added to the staff list yet — ask the
-owner to add you in Settings → Staff. There is no password to set or forget.
+Sign in with the email and password an owner set up for you, or that you set
+yourself:
+
+- **An owner adds you directly** in Settings → Staff — you get a temporary
+  password to change on first sign-in, or
+- **You request an account** at `/signup` — pick your own password there and
+  then wait. Your account exists but cannot sign in (**Pending**) until an
+  owner approves it from Settings → Staff, where a **Approve** button appears
+  next to your row. Once approved it shows **Active** and you can sign in
+  immediately with the password you chose.
+
+If sign-in says the account "is not active yet," that is this same pending
+state — ask an owner to approve it, or re-enable it if it was working before.
 
 What you can see depends on your role:
 

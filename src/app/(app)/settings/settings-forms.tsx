@@ -65,6 +65,56 @@ export function SettingsForm({ initial, disabled }: { initial: Record<string, st
   );
 }
 
+/**
+ * Flips `active` on one staff row — the same flag `signInWithPassword`
+ * already checks. Reuses POST /api/settings/staff (upsertStaff matches by
+ * email), rather than adding a second endpoint for what is really the same
+ * write with one field changed.
+ */
+export function StaffStatusButton({
+  email,
+  name,
+  role,
+  phone,
+  active
+}: {
+  email: string;
+  name: string;
+  role: string;
+  phone: string;
+  active: boolean;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+
+  async function toggle() {
+    setBusy(true);
+    const res = await fetch("/api/settings/staff", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, name, role, phone, active: !active })
+    });
+    if (res.ok) {
+      toast.success(active ? `${name} deactivated` : `${name} approved`);
+      router.refresh();
+    } else {
+      const j = await res.json().catch(() => ({}));
+      toast.error(j.error ?? "Could not update staff.");
+    }
+    setBusy(false);
+  }
+
+  return (
+    <button
+      className={active ? "btn-ghost text-xs" : "btn-primary text-xs"}
+      disabled={busy}
+      onClick={toggle}
+    >
+      {busy ? "…" : active ? "Deactivate" : "Approve"}
+    </button>
+  );
+}
+
 export function StaffForm() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
