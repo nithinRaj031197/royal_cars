@@ -37,6 +37,27 @@ export interface SignInSuccess {
 
 export type SignInResult = SignInSuccess | { ok: false; reason: SignInFailure; retryAfterMinutes?: number };
 
+/**
+ * Re-checks `active` on every request that calls it, not just at sign-in.
+ *
+ * The NextAuth JWT strategy only re-derives the token from the Staff sheet
+ * when a fresh sign-in happens (the `user` argument to the jwt callback is
+ * only present then). Deactivating an account from Settings otherwise had no
+ * effect on a session issued before the click — the cookie kept working for
+ * up to its full 12-hour lifetime. Demo mode has no real Staff row to check
+ * against and is exempt, matching how the NextAuth signIn callback already
+ * treats it.
+ */
+export async function assertAccountActive(email: string): Promise<void> {
+  if (process.env.DEMO_MODE === "1" || process.env.DEMO_MODE === "true") return;
+  const store = getStore();
+  const staff = await store.list("Staff", { activeOnly: false });
+  const row = staff.find((s) => (s.email ?? "").trim().toLowerCase() === email.trim().toLowerCase());
+  if (!row || row.active === "FALSE") {
+    throw Object.assign(new Error("This account has been deactivated. Ask an owner to re-enable it."), { status: 401 });
+  }
+}
+
 export async function signInWithPassword(emailRaw: string, password: string): Promise<SignInResult> {
   const email = emailRaw.trim().toLowerCase();
   const store = getStore();

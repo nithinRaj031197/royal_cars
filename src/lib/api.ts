@@ -20,6 +20,10 @@ export function withPermission(perm: Permission, handler: Handler) {
       const session = await getServerSession(authOptions);
       const user = session?.user as HandlerCtx["user"] | undefined;
       if (!user?.email) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+      // Re-checked on every call: a session issued before an owner deactivated
+      // this account must not keep working for the rest of its 12-hour life.
+      const { assertAccountActive } = await import("@/server/auth/staff");
+      await assertAccountActive(user.email);
       if (!can(user, perm)) return NextResponse.json({ error: "You do not have permission to do that." }, { status: 403 });
       return await handler({ user, req, params: routeCtx?.params });
     } catch (err) {

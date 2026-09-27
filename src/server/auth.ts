@@ -1,5 +1,6 @@
 import type { NextAuthOptions } from "next-auth";
 import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { ROLE_PERMISSIONS, isRole, Role } from "@/lib/permissions";
 
@@ -161,11 +162,28 @@ export function nextAuthOptions(): NextAuthOptions {
 
 export { ROLE_PERMISSIONS };
 
-/** Server helper for RSC pages. */
+/**
+ * Server helper for RSC pages.
+ *
+ * Every caller here is a page component (never an API route — those use
+ * withPermission instead), so a missing or since-deactivated session sends
+ * the visitor cleanly back to /login rather than throwing into the generic
+ * "Something went wrong" error boundary, which is technically correct but a
+ * jarring way to land on what is really just a sign-out.
+ */
 export async function requireSession() {
   const session = await getServerSession(nextAuthOptions());
   if (!session?.user?.email) {
-    throw Object.assign(new Error("Not signed in"), { status: 401 });
+    redirect("/login");
   }
+  // Re-checked on every call, not just at sign-in — see assertAccountActive.
+  // A session issued before an owner deactivated this account must not keep
+  // rendering pages for the rest of its 12-hour life.
+  const { assertAccountActive } = await import("./auth/staff");
+  const active = await assertAccountActive(session.user.email).then(
+    () => true,
+    () => false
+  );
+  if (!active) redirect("/login");
   return session as { user: { id: string; email: string; name?: string | null; role: Role } };
 }
