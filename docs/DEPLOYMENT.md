@@ -70,7 +70,36 @@ GOOGLE_SHEETS_ID=... GOOGLE_SERVICE_ACCOUNT_FILE=./secrets/sa.json pnpm sheets:v
 
 ## 4. Serialized write gateway (required)
 
-Without this, competing reservations, sales and payments are not serialized.
+Without this, reservations, sales, sale payments, voiding a payment,
+cancelling a sale, delivery, purchase payments and after-sale service charges
+do not merely risk a race — **they fail outright** with "Write gateway is not
+configured (GATEWAY_URL)." Every other write (acquisitions, inspections, work
+orders, leads, commitments, service requests) does not go through this path
+and is unaffected.
+
+### Automated (preferred)
+
+`scripts/deploy-gateway.ts` creates the container-bound Apps Script project,
+pushes `apps-script/Gateway.gs`, sets the HMAC secret as a Script Property, and
+creates the web app deployment — all via the Apps Script API
+(`script.googleapis.com`), using the same service account already configured
+for Sheets.
+
+1. **Enable the Apps Script API** for your Cloud project (one-time, like
+   Sheets/Drive): visit
+   `https://console.cloud.google.com/apis/library/script.googleapis.com?project=<your-project-id>`
+   and click Enable.
+2. Run:
+   ```bash
+   npx tsx scripts/deploy-gateway.ts
+   ```
+   It prints the `GATEWAY_URL` and a freshly generated `GATEWAY_HMAC_SECRET` —
+   set both in your environment. Re-run it after editing `Gateway.gs`; it
+   detects the existing project and pushes a new version.
+
+### Manual fallback
+
+If the Apps Script API cannot be enabled (organisation policy, etc.):
 
 1. Open the application spreadsheet → **Extensions → Apps Script**.
 2. Replace the contents with `apps-script/Gateway.gs`. Save.
@@ -84,9 +113,9 @@ Without this, competing reservations, sales and payments are not serialized.
 6. Set `GATEWAY_HMAC_SECRET` in the app environment to the **same** value as the
    script property.
 
-Re-deploy (**Deploy → Manage deployments → Edit → New version**) whenever
-`Gateway.gs` changes, or the app and the gateway will disagree about action
-semantics.
+Re-deploy (**Deploy → Manage deployments → Edit → New version**, or re-run
+`scripts/deploy-gateway.ts`) whenever `Gateway.gs` changes, or the app and the
+gateway will disagree about action semantics.
 
 ### Verifying the gateway
 
@@ -102,16 +131,29 @@ Copy `.env.example` to `.env` and fill in. For production, **unset `DEMO_MODE`**
 
 | Variable | Required | Notes |
 | --- | --- | --- |
-| `NEXTAUTH_URL` | yes | Public URL, https in production |
+| `NEXTAUTH_URL` | yes | Public URL. Cookie security follows this scheme — https in production, or the session silently fails to persist |
 | `NEXTAUTH_SECRET` | yes | `openssl rand -base64 32` |
-| `GOOGLE_CLIENT_ID` / `_SECRET` | yes | OAuth client, for staff sign-in |
 | `GOOGLE_SHEETS_ID` | yes | The application spreadsheet |
-| `GOOGLE_SERVICE_ACCOUNT_FILE` | yes | Path to the JSON key, outside the repo |
-| `GOOGLE_DRIVE_*_FOLDER_ID` | recommended | Shared-drive folders for files |
-| `GATEWAY_URL` | yes | Apps Script `/exec` URL |
-| `GATEWAY_HMAC_SECRET` | yes | Must match the `HMAC_SECRET` script property |
-| `OWNER_EMAIL` | first run | Seeds the first owner in the `Staff` tab |
+| `GOOGLE_SERVICE_ACCOUNT_FILE` | local only | Path to the JSON key, outside the repo |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | serverless only | The key itself, base64-encoded — use this on Vercel/Lambda, not the file path above |
+| `GOOGLE_DRIVE_*_FOLDER_ID` | no | Shared-drive folders for photos/documents. Uploads are simply unavailable until set (stage 2, not yet in use) |
+| `GATEWAY_URL` | yes | Apps Script `/exec` URL — see §4 |
+| `GATEWAY_HMAC_SECRET` | yes | Must match the `HMAC_SECRET` script property. There is no fallback: unset, every critical write fails to sign |
 | `DEMO_MODE` | no | `1` for the in-memory demo. **Never set in production** |
+
+The first owner account is created with `pnpm staff:password -- --email <you> --role owner`
+(see `scripts/staff-password.ts`), not an environment variable — there used to
+be an `OWNER_EMAIL` variable for this and it was removed because nothing read
+it; the CLI script replaced that path.
+
+Two variables that used to appear here were removed as dead code, not just
+undocumented: `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` registered a Google
+OAuth sign-in provider that no page ever linked to (there was no "Sign in
+with Google" button anywhere), and `GATEWAY_TOKEN` was an alternate secret
+that `Gateway.gs` never actually checked — the Apps Script side only ever
+verified an HMAC signature. Worse, if neither was set the code silently
+signed requests with the literal string `"insecure-dev"`. Both are gone; sign-in
+is email/password only, and `GATEWAY_HMAC_SECRET` is required with no fallback.
 
 Secrets belong in your host's secret manager. Never commit `.env`, and never put
 credentials, passwords or session tokens in the spreadsheet.

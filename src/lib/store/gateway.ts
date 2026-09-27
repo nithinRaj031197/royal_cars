@@ -53,7 +53,21 @@ export interface GatewayWriteRequest {
 }
 
 function hmac(method: "sign" | "verify", payload: string): string {
-  const secret = envConfig.gatewayHmacSecret ?? envConfig.gatewayToken ?? "insecure-dev";
+  const secret = envConfig.gatewayHmacSecret;
+  if (!secret) {
+    // GATEWAY_TOKEN used to be an alternative here, and a missing secret fell
+    // back to the literal string "insecure-dev" — a hardcoded signing key that
+    // would have verified against ANY deployment using the same fallback.
+    // Gateway.gs only ever checked an HMAC signature (there was never a
+    // token-based path on the Apps Script side), so that fallback was dead
+    // and dangerous at the same time. Fail loudly instead.
+    throw new Error(
+      "GATEWAY_HMAC_SECRET is not set. Critical writes (reservations, sales, " +
+        "payments, delivery) cannot be signed without it. Generate one with " +
+        "`openssl rand -base64 32`, set it as the Script Property HMAC_SECRET " +
+        "on the deployed Gateway.gs, and set the same value here."
+    );
+  }
   if (method === "sign") return createHmac("sha256", secret).update(payload).digest("hex");
   const expected = createHmac("sha256", secret).update(payload).digest("hex");
   const got = payload.length >= 64 ? payload.slice(-64) : "";

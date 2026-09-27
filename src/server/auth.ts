@@ -1,6 +1,5 @@
 import type { NextAuthOptions } from "next-auth";
 import { getServerSession } from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { ROLE_PERMISSIONS, isRole, Role } from "@/lib/permissions";
 
@@ -50,8 +49,10 @@ export function nextAuthOptions(): NextAuthOptions {
 
   const providers: NextAuthOptions["providers"] = [];
 
-  // Email + password against the Staff tab. This is the sign-in the showroom
-  // uses; Google sign-in remains available when an OAuth client is configured.
+  // Email + password against the Staff tab. This is the only sign-in the
+  // showroom uses — Google OAuth sign-in was registered here for a while but
+  // never had a UI path to reach it (no button anywhere called signIn("google")),
+  // so it was removed along with GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET.
   providers.push(
     CredentialsProvider({
       id: "password",
@@ -76,17 +77,6 @@ export function nextAuthOptions(): NextAuthOptions {
       }
     })
   );
-
-  // Optional: Google sign-in, when an OAuth client is configured.
-  if (envHas("GOOGLE_CLIENT_ID") && envHas("GOOGLE_CLIENT_SECRET")) {
-    providers.push(
-      GoogleProvider({
-        clientId: process.env.GOOGLE_CLIENT_ID ?? "",
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
-        authorization: { params: { prompt: "consent", access_type: "offline", scope: "openid email profile" } }
-      })
-    );
-  }
 
   // Demo only: pick a staff profile with no password, for the fictional dataset.
   if (demoMode) {

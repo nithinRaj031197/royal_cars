@@ -10,12 +10,6 @@ export const envConfig = {
   get nextAuthUrl(): string | undefined {
     return env("NEXTAUTH_URL");
   },
-  get googleClientId(): string | undefined {
-    return env("GOOGLE_CLIENT_ID");
-  },
-  get googleClientSecret(): string | undefined {
-    return env("GOOGLE_CLIENT_SECRET");
-  },
   get sheetsId(): string | undefined {
     return env("GOOGLE_SHEETS_ID");
   },
@@ -38,14 +32,8 @@ export const envConfig = {
   get gatewayUrl(): string | undefined {
     return env("GATEWAY_URL");
   },
-  get gatewayToken(): string | undefined {
-    return env("GATEWAY_TOKEN");
-  },
   get gatewayHmacSecret(): string | undefined {
     return env("GATEWAY_HMAC_SECRET");
-  },
-  get ownerEmail(): string | undefined {
-    return env("OWNER_EMAIL");
   },
   get demoMode(): boolean {
     const v = env("DEMO_MODE");
