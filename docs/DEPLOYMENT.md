@@ -11,12 +11,11 @@ no production data.
 2. **APIs & Services → Library** → enable:
    - Google Sheets API
    - Google Drive API
-3. **APIs & Services → OAuth consent screen** → Internal (Workspace) or External.
-   Scopes needed for sign-in only: `openid`, `email`, `profile`.
-4. **Credentials → Create credentials → OAuth client ID → Web application**:
-   - Authorised JavaScript origin: `https://your-domain`
-   - Authorised redirect URI: `https://your-domain/api/auth/callback/google`
-   - Copy the client ID and secret into `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
+   - Apps Script API — needed for `scripts/deploy-gateway.ts` (§4); skip this
+     one if you are using the manual gateway setup instead.
+
+Sign-in is email/password against the `Staff` tab, not Google OAuth — there is
+no client ID/secret to create here.
 
 ## 2. Service account (data access)
 
@@ -160,13 +159,23 @@ credentials, passwords or session tokens in the spreadsheet.
 
 ## 6. First owner
 
-Set `OWNER_EMAIL` and run `pnpm sheets:setup`, then sign in with that Google
-account. Sign-in is allowlist-only: `authOptions.signIn` refuses any email absent
-from the `Staff` tab or marked inactive. There is no self-registration. Add the
-rest of the staff from **Settings → Staff**.
+```bash
+pnpm staff:password -- --email you@yourcompany.in --name "Your Name" --role owner
+```
 
-To lock someone out immediately, set their `active` to `FALSE`. Existing sessions
-last at most 12 hours.
+This writes only a scrypt hash to the `Staff` tab and prints a temporary
+password once — it is not stored anywhere and cannot be shown again. Sign in
+with it, then add the rest of the staff from **Settings → Staff**, or have
+them request an account at `/signup` and approve it yourself from there.
+
+Sign-in is allowlist-only either way: `signInWithPassword` refuses any account
+absent from the `Staff` tab or with `active` set to `FALSE`.
+
+To lock someone out, set their `active` to `FALSE` from Settings → Staff (the
+Deactivate button does this). This takes effect on their very next request —
+`assertAccountActive` re-checks it on every call, not just at sign-in, so a
+session that was already open is cut off immediately rather than continuing
+to work for the rest of its 12-hour lifetime.
 
 ## 7a. Deploying to Vercel
 
@@ -182,20 +191,38 @@ Paste the result as `GOOGLE_SERVICE_ACCOUNT_JSON`. Raw JSON also works; base64 i
 simply harder to corrupt. Inline JSON takes precedence over a file, so a stale
 key baked into an image can never win.
 
+**Required — the app will not run correctly without these:**
+
 | Variable | Value | Scope |
 | --- | --- | --- |
-| `NEXTAUTH_URL` | `https://<your-app>.vercel.app` | Production |
+| `NEXTAUTH_URL` | `https://<your-app>.vercel.app` — must be `https://`, no trailing slash | Production |
 | `NEXTAUTH_SECRET` | `openssl rand -base64 32` | All |
 | `GOOGLE_SHEETS_ID` | The spreadsheet id | All |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | The base64 above | All |
-| `OWNER_EMAIL` | Your address | All |
+| `GATEWAY_URL` | from `scripts/deploy-gateway.ts` or the manual setup in §4 | All |
+| `GATEWAY_HMAC_SECRET` | same script; must match the deployed script's `HMAC_SECRET` property | All |
 
-**Do not set `DEMO_MODE`.** Any value makes the deployment serve in-memory
-fictional data. Leave it unset in production.
+**Optional — only if you're using photo/document uploads (not required to run):**
 
-Add Drive and gateway variables once those stages are done. Until the gateway is
-deployed, critical writes are not serialized — acceptable for a single user
-evaluating the app, not for a showroom taking payments.
+| Variable | Value |
+| --- | --- |
+| `GOOGLE_DRIVE_ROOT_FOLDER_ID` | shared drive id |
+| `GOOGLE_DRIVE_PHOTO_FOLDER_ID` | photos folder id |
+| `GOOGLE_DRIVE_DOC_FOLDER_ID` | documents folder id |
+
+**Must NOT be set on Vercel:**
+
+| Variable | Why |
+| --- | --- |
+| `GOOGLE_SERVICE_ACCOUNT_FILE` | there is no disk to put the file on — this caused every route to 500 the first time this was deployed; use `GOOGLE_SERVICE_ACCOUNT_JSON` instead |
+| `DEMO_MODE` | any value serves in-memory fictional data instead of your real spreadsheet |
+
+Until `GATEWAY_URL`/`GATEWAY_HMAC_SECRET` are set, reservations, sales, sale
+payments, cancellations, delivery, purchase payments and after-sale charges
+fail outright with "Write gateway is not configured" — not merely
+unserialized. Everything else (acquisitions, inspections, work orders, leads,
+CRM, after-sale commitments/requests, settings, staff, signup/approval) works
+without it.
 
 Redeploy after changing any variable: Vercel bakes them in at build time.
 
