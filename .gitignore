@@ -23,3 +23,5 @@ secrets/
 cypress/screenshots/
 cypress/videos/
 cypress/downloads/
+.vercel
+.env*
