@@ -29,6 +29,18 @@ interface CacheEntry {
 
 const CACHE_TTL_MS = 15_000;
 
+/**
+ * Retry budget.
+ *
+ * Sheets quotas are per minute, so a rate-limited call needs seconds of
+ * patience, not milliseconds. Five attempts starting at 2s reach roughly
+ * 2+4+8+16 = 30s of waiting, which clears a per-minute window in practice.
+ */
+const MAX_ATTEMPTS = 5;
+const TRANSIENT_BACKOFF_MS = 300;
+const QUOTA_BACKOFF_MS = 2_000;
+const MAX_BACKOFF_MS = 16_000;
+
 export class GoogleSheetsStore implements DataStore {
   readonly kind = "google-sheets" as const;
   private auth: GoogleAuth;
@@ -50,7 +62,7 @@ export class GoogleSheetsStore implements DataStore {
 
   private async withRetry<T>(fn: () => Promise<T>, what: string): Promise<T> {
     let lastErr: unknown;
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
         return await fn();
       } catch (err) {
@@ -58,8 +70,16 @@ export class GoogleSheetsStore implements DataStore {
         const status = (err as { code?: number; response?: { status?: number } })?.code
           ?? (err as { response?: { status?: number } })?.response?.status;
         const retryable = status === 429 || (typeof status === "number" && status >= 500) || status === undefined;
-        if (!retryable || attempt === 3) break;
-        await new Promise((r) => setTimeout(r, 300 * 2 ** (attempt - 1) + Math.floor(Math.random() * 150)));
+        if (!retryable || attempt === MAX_ATTEMPTS) break;
+
+        // Sheets limits reads and writes PER MINUTE per user. Backing off for
+        // a few hundred milliseconds cannot clear a per-minute quota, so a
+        // burst of ordinary page views used to fail outright. Rate-limit
+        // errors wait in seconds; genuine 5xx blips stay fast.
+        const quota = status === 429 || /Quota exceeded/i.test((err as Error)?.message ?? "");
+        const base = quota ? QUOTA_BACKOFF_MS : TRANSIENT_BACKOFF_MS;
+        const delay = Math.min(base * 2 ** (attempt - 1), MAX_BACKOFF_MS) + Math.floor(Math.random() * 250);
+        await new Promise((r) => setTimeout(r, delay));
       }
     }
     throw new StoreError(`Google Sheets request failed (${what}): ${(lastErr as Error)?.message ?? "unknown"}`, 502);

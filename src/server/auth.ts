@@ -45,6 +45,7 @@ function assertProductionSecret(): void {
 
 export function nextAuthOptions(): NextAuthOptions {
   assertProductionSecret();
+  const secureCookies = (process.env.NEXTAUTH_URL ?? "").startsWith("https://");
   const demoMode = process.env.DEMO_MODE === "1" || process.env.DEMO_MODE === "true";
 
   const providers: NextAuthOptions["providers"] = [];
@@ -150,10 +151,19 @@ export function nextAuthOptions(): NextAuthOptions {
     },
     cookies: {
       sessionToken: {
+        // The `__Secure-` prefix is only valid on HTTPS, and a Secure cookie is
+        // discarded outright by the browser over http. Keying this off
+        // DEMO_MODE meant every non-demo deployment served over http — local
+        // Sheets development, an HTTP staging box — handed the browser a
+        // cookie it refused to store, so a correct password appeared to
+        // "work" (200 from the callback) and then bounced back to /login.
+        // Follow the connection, which is what NextAuth itself does.
         name: demoMode
           ? "showroom.demo.session-token"
-          : "__Secure-next-auth.session-token",
-        options: { httpOnly: true, sameSite: "lax", path: "/", secure: !demoMode }
+          : secureCookies
+            ? "__Secure-next-auth.session-token"
+            : "next-auth.session-token",
+        options: { httpOnly: true, sameSite: "lax", path: "/", secure: secureCookies }
       }
     }
   };

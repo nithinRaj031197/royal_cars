@@ -1,3 +1,5 @@
+export {};
+
 /**
  * The full money journey on one car: book the sale, pay it down in stages,
  * and hand it over.
@@ -16,8 +18,8 @@ const rupees = (text: string) => Number(text.replace(/[^0-9]/g, ""));
  * re-rendered the figure. Assert inside .should() so Cypress re-queries.
  */
 const expectBalance = (expected: number, label: string) =>
-  cy.contains(/Balance due/i, { timeout: 30000 }).should(($el) => {
-    expect(rupees($el.text()), label).to.eq(expected);
+  cy.contains(/Balance due/i, { timeout: 30000 }).should((el) => {
+    expect(rupees(Cypress.$(el as unknown as HTMLElement).text()), label).to.eq(expected);
   });
 
 describe("Sale payments and delivery", () => {

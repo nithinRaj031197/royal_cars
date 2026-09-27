@@ -22,7 +22,13 @@
     "e2e:server": "DEMO_MODE=1 NEXTAUTH_SECRET=cypress-test-secret-0123456789abcd NEXTAUTH_URL=http://localhost:3200 next dev -p 3200",
     "e2e:run": "env -u ELECTRON_RUN_AS_NODE -u ELECTRON_NO_ATTACH_CONSOLE cypress run",
     "e2e:open": "env -u ELECTRON_RUN_AS_NODE -u ELECTRON_NO_ATTACH_CONSOLE cypress open",
-    "e2e": "start-server-and-test e2e:server http://localhost:3200/login e2e:run"
+    "e2e": "start-server-and-test e2e:server http://localhost:3200/login e2e:run",
+    "e2e:sheets:server": "DEMO_MODE=0 GOOGLE_SERVICE_ACCOUNT_FILE=\"\" NEXTAUTH_URL=http://localhost:3300 next dev -p 3300",
+    "e2e:sheets:run": "env -u ELECTRON_RUN_AS_NODE -u ELECTRON_NO_ATTACH_CONSOLE cypress run --config-file cypress-sheets.config.ts",
+    "e2e:sheets:snapshot": "tsx scripts/e2e-sheets/snapshot.ts",
+    "e2e:sheets:verify": "tsx scripts/e2e-sheets/verify.ts",
+    "e2e:sheets:cleanup": "tsx scripts/e2e-sheets/cleanup.ts",
+    "field:audit": "tsx scripts/field-audit.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
