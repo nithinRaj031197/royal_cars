@@ -1,6 +1,7 @@
 import type { NextAuthOptions } from "next-auth";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { ROLE_PERMISSIONS, isRole, Role } from "@/lib/permissions";
 
@@ -20,8 +21,6 @@ declare module "next-auth/jwt" {
   }
 }
 
-export const authOptions: NextAuthOptions = nextAuthOptions();
-
 function envHas(name: string): boolean {
   const v = process.env[name];
   return typeof v === "string" && v.length > 0;
@@ -35,6 +34,17 @@ function envHas(name: string): boolean {
  */
 function assertProductionSecret(): void {
   if (process.env.NODE_ENV !== "production") return;
+  // `next build` statically imports every route module — including
+  // /api/auth/[...nextauth]/route.ts, which must create its handler with
+  // `NextAuth(nextAuthOptions())` at module scope; there is no way to defer
+  // that call to request time with the App Router adapter. That import runs
+  // during the build's "Collecting page data" step, under NODE_ENV=production
+  // but not necessarily with the real deployment's secrets visible yet — so
+  // this check would fail the BUILD itself, on a host where the secret is
+  // simply provisioned for runtime rather than for that build step. Next
+  // sets NEXT_PHASE to distinguish exactly this; skip the assertion then and
+  // let it fire for real once actual requests are being served.
+  if (process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD) return;
   if (envHas("NEXTAUTH_SECRET")) return;
   throw new Error(
     "NEXTAUTH_SECRET is not set. Sign-in cannot work in production without it, " +

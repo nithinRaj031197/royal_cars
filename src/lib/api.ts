@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { nextAuthOptions } from "@/server/auth";
 import { can, Permission } from "./permissions";
 import { ZodError } from "zod";
 import { StoreError } from "./store/types";
@@ -17,7 +17,7 @@ type Handler = (ctx: HandlerCtx) => Promise<NextResponse | Response>;
 export function withPermission(perm: Permission, handler: Handler) {
   return async (req: NextRequest, routeCtx?: { params?: Promise<Record<string, string>> }): Promise<Response> => {
     try {
-      const session = await getServerSession(authOptions);
+      const session = await getServerSession(nextAuthOptions());
       const user = session?.user as HandlerCtx["user"] | undefined;
       if (!user?.email) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
       // Re-checked on every call: a session issued before an owner deactivated

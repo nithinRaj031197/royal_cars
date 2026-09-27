@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { nextAuthOptions } from "@/server/auth";
 import { can, Role } from "@/lib/permissions";
 import { readDriveFile } from "@/server/services/media";
 import { getStore } from "@/lib/store";
@@ -20,7 +20,7 @@ export const runtime = "nodejs";
  *    sensitive (identity)    identity scan is not readable by every role
  */
 export async function GET(_req: NextRequest, routeCtx: { params: Promise<{ fileId: string }> }) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(nextAuthOptions());
   const user = session?.user as { email?: string; role?: Role } | undefined;
   if (!user?.email) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { nextAuthOptions } from "@/server/auth";
 import { can, Role } from "@/lib/permissions";
 import { templateCsv } from "@/server/services/imports";
 
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(nextAuthOptions());
   const user = session?.user as { email?: string; role?: Role } | undefined;
   if (!user?.email) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   if (!can(user, "import.run")) return NextResponse.json({ error: "Permission denied." }, { status: 403 });

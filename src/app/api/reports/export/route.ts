@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { nextAuthOptions } from "@/server/auth";
 import { can } from "@/lib/permissions";
 import { getRepo } from "@/lib/repo";
 import { toCsv } from "@/lib/csv";
@@ -9,7 +9,7 @@ import { investmentBreakdown } from "@/server/services/work";
 import { getStore } from "@/lib/store";
 
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(nextAuthOptions());
   const user = session?.user as { email?: string; role?: import("@/lib/permissions").Role } | undefined;
   if (!user?.email) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
