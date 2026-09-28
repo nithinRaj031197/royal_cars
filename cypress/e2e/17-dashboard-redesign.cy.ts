@@ -50,6 +50,29 @@ describe("Dashboard redesign", () => {
     }
   });
 
+  it("the period picker's Apply button is never clipped, even when it has to wrap", () => {
+    // A real regression: the date-range form used a fixed-width row with no
+    // wrap, which fit in this headless browser's compact native date input
+    // but clipped the Apply button off-screen on a real phone, where mobile
+    // Safari/Chrome render <input type="date"> considerably wider — a gap
+    // this environment cannot reproduce directly. Forcing a narrow width
+    // here exercises the same "doesn't all fit" condition without depending
+    // on matching any specific device's date-input rendering.
+    for (const width of [390, 320, 280]) {
+      cy.viewport(width, 900);
+      cy.login();
+      cy.visit("/dashboard");
+      cy.contains("h1", "Dashboard", { timeout: 20000 }).should("be.visible");
+      cy.contains("button", "Apply")
+        .should("be.visible")
+        .should(($btn) => {
+          const r = $btn[0]!.getBoundingClientRect();
+          expect(r.x, `${width}px: Apply's left edge on screen`).to.be.at.least(0);
+          expect(r.x + r.width, `${width}px: Apply's right edge within viewport`).to.be.at.most(width + 1);
+        });
+    }
+  });
+
   it("throws no console errors on load", () => {
     cy.viewport(1440, 960);
     cy.login();

@@ -71,17 +71,23 @@ export function PeriodPicker({ from, to }: { from: string; to: string }) {
       </div>
 
       <form
-        className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 shadow-sm"
+        className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 shadow-sm"
         onSubmit={(e) => {
           e.preventDefault();
           go(f, t);
         }}
       >
+        {/* flex-wrap, not a fixed row: a native date input renders at very
+            different widths across browsers — real mobile Safari/Chrome give
+            it far more room than a desktop browser does, and there is no
+            reliable way to measure that from here. min-w-0 lets each input
+            shrink instead of forcing overflow, and the row wraps rather than
+            clipping the Apply button off-screen when it doesn't all fit. */}
         <CalendarRange className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
         <input
           aria-label="From date"
           type="date"
-          className="w-[8.5rem] border-0 bg-transparent p-0 text-sm text-slate-700 focus:outline-none focus:ring-0"
+          className="min-w-0 flex-1 basis-28 border-0 bg-transparent p-0 text-sm text-slate-700 focus:outline-none focus:ring-0"
           value={f}
           onChange={(e) => setF(e.target.value)}
         />
@@ -91,11 +97,11 @@ export function PeriodPicker({ from, to }: { from: string; to: string }) {
         <input
           aria-label="To date"
           type="date"
-          className="w-[8.5rem] border-0 bg-transparent p-0 text-sm text-slate-700 focus:outline-none focus:ring-0"
+          className="min-w-0 flex-1 basis-28 border-0 bg-transparent p-0 text-sm text-slate-700 focus:outline-none focus:ring-0"
           value={t}
           onChange={(e) => setT(e.target.value)}
         />
-        <button className="btn-primary shrink-0 px-3 py-1.5 text-xs">Apply</button>
+        <button className="btn-primary w-full shrink-0 px-3 py-1.5 text-xs sm:w-auto">Apply</button>
       </form>
     </div>
   );
